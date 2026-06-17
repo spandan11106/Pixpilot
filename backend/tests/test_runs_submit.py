@@ -52,7 +52,7 @@ def test_submit_moves_product_image_to_inputs(
     token = stage_file("product.jpg")
     response = client.post("/api/runs/submit", json=_valid_body(token))
     run_id = response.json()["run_id"]
-    assert (tmp_content_dir / run_id / "inputs" / "product.jpg").exists()
+    assert (tmp_content_dir / run_id / "inputs" / "product_image_product.jpg").exists()
 
 
 def test_submit_writes_run_metadata(client: TestClient, stage_file, tmp_content_dir: Path):
@@ -66,7 +66,7 @@ def test_submit_writes_run_metadata(client: TestClient, stage_file, tmp_content_
     assert meta["status"] == "running"
     assert meta["pipeline_mode"] == "ecommerce"
     assert meta["inputs"]["description_product"] == "Organic argan oil, 30ml amber dropper bottle."
-    assert meta["inputs"]["image_path"] == "inputs/product.jpg"
+    assert meta["inputs"]["image_path"] == "inputs/product_image_product.jpg"
     assert meta["steering"]["aspect_ratio"] == "1:1"
     assert meta["supervision"]["research"] is True
 
@@ -115,7 +115,7 @@ def test_submit_with_optional_logo_token(
     response = client.post("/api/runs/submit", json=body)
     assert response.status_code == 201
     run_id = response.json()["run_id"]
-    assert (tmp_content_dir / run_id / "inputs" / "logo.png").exists()
+    assert (tmp_content_dir / run_id / "inputs" / "logo_logo.png").exists()
     meta = json.loads((tmp_content_dir / run_id / "run_metadata.json").read_text())
-    assert meta["inputs"]["logo_path"] == "inputs/logo.png"
+    assert meta["inputs"]["logo_path"] == "inputs/logo_logo.png"
     assert meta["inputs"]["logo_placement"] == "top-right"
