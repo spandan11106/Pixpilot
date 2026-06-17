@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pixpilot is a data pipeline for AI-assisted marketing. It preprocesses images and markdown text to produce clean, optimized payloads suitable for vision model consumption.
 
+## Rules
+
+- All agent instruction files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, etc.) must live exclusively inside `.claude/`. Never create or leave these files anywhere else in the repository.
+
 ## Running Tests
 
 Tests live in `testing/` and are run as scripts (not a test framework like pytest). Run from the repo root so relative imports resolve:
