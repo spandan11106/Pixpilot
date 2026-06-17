@@ -1,7 +1,7 @@
 // frontend/app/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,11 +46,10 @@ function FileField({ label, fileType, accept, onToken }: {
   }
 
   // notify parent when token changes
-  const prev = useRef<string | null>(null);
-  if (prev.current !== state.token) {
-    prev.current = state.token;
+  useEffect(() => {
     onToken?.(state.token);
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.token]);
 
   return (
     <div className="space-y-1">
