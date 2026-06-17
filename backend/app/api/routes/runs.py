@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -73,10 +74,18 @@ class CreateRunResponse(BaseModel):
     run_id: str
 
 
+_UUID4_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+
+
 def _resolve_token(token: str | None, label: str) -> Path | None:
     if token is None:
         return None
-    token_dir = settings.content_dir / "uploads" / token
+    if not _UUID4_RE.match(token):
+        raise HTTPException(status_code=422, detail=f"Invalid token format for {label}.")
+    uploads_root = (settings.content_dir / "uploads").resolve()
+    token_dir = (uploads_root / token).resolve()
+    if not token_dir.is_relative_to(uploads_root):
+        raise HTTPException(status_code=422, detail=f"Invalid token for {label}.")
     if not token_dir.exists():
         raise HTTPException(
             status_code=422,
@@ -88,7 +97,10 @@ def _resolve_token(token: str | None, label: str) -> Path | None:
             status_code=422,
             detail=f"Token directory for {label} is empty.",
         )
-    return files[0]
+    resolved_file = files[0].resolve()
+    if not resolved_file.is_relative_to(token_dir):
+        raise HTTPException(status_code=422, detail=f"Invalid file path for {label}.")
+    return resolved_file
 
 
 @router.post("", response_model=CreateRunResponse, status_code=201)
