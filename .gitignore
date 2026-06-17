@@ -88,3 +88,7 @@ backend/uv.lock
 
 # shadcn generated (tracked, but exclude local overrides)
 frontend/.env.local
+
+# Allow frontend/lib (overrides the lib/ pattern above)
+!frontend/lib/
+!frontend/lib/**
