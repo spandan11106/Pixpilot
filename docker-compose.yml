@@ -1,0 +1,55 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - content_data:/app/content
+    env_file:
+      - .env
+    environment:
+      - CONTENT_DIR=/app/content
+      - FFMPEG_SIDECAR_URL=http://ffmpeg:8001
+      - RENDERER_SIDECAR_URL=http://renderer:8002
+    depends_on:
+      - ffmpeg
+      - renderer
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  ffmpeg:
+    build:
+      context: ./services/ffmpeg
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - content_data:/app/content
+
+  renderer:
+    build:
+      context: ./services/renderer
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    volumes:
+      - content_data:/app/content
+
+volumes:
+  content_data:

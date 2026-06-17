@@ -75,3 +75,16 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Pixpilot run data (never commit pipeline outputs or uploads)
+content/*/
+
+# uv
+backend/.venv/
+backend/uv.lock
+
+# Docker
+*.dockerignore
+
+# shadcn generated (tracked, but exclude local overrides)
+frontend/.env.local
