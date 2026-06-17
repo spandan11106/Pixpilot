@@ -31,22 +31,18 @@ function useFileUpload(fileType: string) {
     }
   }
 
-  function clear() {
-    setState({ token: null, status: "idle" });
-  }
-
-  return { state, handleFile, clear };
+  return { state, handleFile };
 }
 
 function FileField({ label, fileType, accept, onToken }: {
   label: string; fileType: string; accept: string; onToken?: (token: string | null) => void;
 }) {
-  const { state, handleFile, clear } = useFileUpload(fileType);
+  const { state, handleFile } = useFileUpload(fileType);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    handleFile(file).then(() => onToken?.(state.token));
+    handleFile(file);
   }
 
   // notify parent when token changes
