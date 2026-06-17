@@ -811,15 +811,15 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 ### Milestone 0 — Infrastructure Setup *(Week 1–2)*
 
-- [ ] Create `content/` directory at repo root; add `.gitkeep`; add `content/*/` to `.gitignore` to exclude run data from version control.
-- [ ] Initialize `workspace_settings.json` with default supervision and steering values on first launch.
-- [ ] Implement `RunManager` utility (Python): generates `run_id` (UUID), creates `content/<run_id>/inputs/` directory, initializes `run_metadata.json` with status `"running"`.
-- [ ] Scaffold Python FastAPI project with LangGraph.
-- [ ] Scaffold Next.js 14 dashboard (no auth required — single-user local tool).
-- [ ] Set up FFmpeg Docker sidecar; confirm it starts with `docker compose up`.
-- [ ] Set up Three.js Node sidecar for 3D model rendering.
-- [ ] Document `.env` file structure with all required API keys and default values.
-- [ ] Wire FastAPI SSE endpoint; confirm it streams events to Next.js client.
+- [x] Create `content/` directory at repo root; add `.gitkeep`; add `content/*/` to `.gitignore` to exclude run data from version control.
+- [x] Initialize `workspace_settings.json` with default supervision and steering values on first launch.
+- [x] Implement `RunManager` utility (Python): generates `run_id` (UUID), creates `content/<run_id>/inputs/` directory, initializes `run_metadata.json` with status `"running"`.
+- [x] Scaffold Python FastAPI project with LangGraph.
+- [x] Scaffold Next.js 14 dashboard (no auth required — single-user local tool).
+- [x] Set up FFmpeg Docker sidecar; confirm it starts with `docker compose up`.
+- [x] Set up Three.js Node sidecar for 3D model rendering.
+- [x] Document `.env` file structure with all required API keys and default values.
+- [x] Wire FastAPI SSE endpoint; confirm it streams events to Next.js client.
 
 **Deliverable:** `docker compose up` starts all services; Next.js dashboard loads; SSE connection confirmed in browser; a test run creates a `content/<run_id>/` folder with a valid `run_metadata.json`.
 
@@ -827,8 +827,8 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 ### Milestone 1 — Ingestion, Vision Analysis & Summarizer *(Week 3–4)*
 
-- [ ] Build submission form in Next.js: compulsory fields + all optional inputs + mode selector + supervision panel.
-- [ ] Build FastAPI ingestion endpoint: validates required fields, file types, and size limits.
+- [x] Build submission form in Next.js: compulsory fields + all optional inputs + mode selector + supervision panel.
+- [x] Build FastAPI ingestion endpoint: validates required fields, file types, and size limits.
 - [ ] Implement video keyframe extraction via FFmpeg sidecar (1 FPS, max 15 frames).
 - [ ] Implement 3D model rendering via Three.js sidecar (4 perspective thumbnails).
 - [ ] Build Vision Agent (GPT-4o Vision): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON.
