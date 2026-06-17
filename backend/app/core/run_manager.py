@@ -1,7 +1,9 @@
 import json
+import shutil
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from app.core.settings import settings
 
@@ -42,10 +44,54 @@ class RunManager:
         run_dir = self._run_dir(run_id)
         (run_dir / "inputs").mkdir(parents=True, exist_ok=True)
 
+        metadata = {**_INITIAL_METADATA, "run_id": run_id, "created_at": _now()}
+        self._write(run_id, metadata)
+        return run_id
+
+    def create_run_from_submission(
+        self,
+        payload: dict[str, Any],
+        file_map: dict[str, Path],
+    ) -> str:
+        """
+        Create a run, move staged files into inputs/, write full run_metadata.json.
+
+        payload: the validated SubmitPayload dict (model_dump())
+        file_map: mapping of field name → absolute Path of staged file
+                  e.g. {"product_image": Path("/content/uploads/<token>/product.jpg")}
+        """
+        run_id = str(uuid.uuid4())
+        inputs_dir = self._run_dir(run_id) / "inputs"
+        inputs_dir.mkdir(parents=True, exist_ok=True)
+
+        # Move staged files into inputs/
+        path_map: dict[str, str | None] = {}
+        for field, src in file_map.items():
+            dest = inputs_dir / src.name
+            shutil.move(str(src), dest)
+            path_map[field] = f"inputs/{src.name}"
+
+        inputs_meta = {
+            "description_product": payload["description_product"],
+            "description_audience": payload["description_audience"],
+            "description_colors": payload["description_colors"],
+            "image_path": path_map.get("product_image"),
+            "video_path": path_map.get("video"),
+            "model_3d_path": path_map.get("model_3d"),
+            "reference_image_path": path_map.get("reference_image"),
+            "logo_path": path_map.get("logo"),
+            "logo_placement": payload.get("logo_placement"),
+        }
+
         metadata = {
             **_INITIAL_METADATA,
             "run_id": run_id,
             "created_at": _now(),
+            "pipeline_mode": payload["pipeline_mode"],
+            "seasonal_theme": payload.get("seasonal_theme"),
+            "inputs": inputs_meta,
+            "steering": payload["steering"],
+            "supervision": payload["supervision"],
         }
         self._write(run_id, metadata)
         return run_id
