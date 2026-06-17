@@ -2,11 +2,13 @@
 
 Flow:
 
-    start → process_text → process_image → process_video → finalize → complete
+    start → process_text → process_image → process_video → process_model
+          → finalize → complete
 
 The required product image halts the run on failure (routes to END with a
-``pipeline_error`` event). The optional video is non-fatal: a missing or failed
-video emits a ``video_skipped`` / ``video_failed`` event and the run continues.
+``pipeline_error`` event). The optional video and 3D model are non-fatal: a
+missing or failed input emits a ``*_skipped`` / ``*_failed`` event and the run
+continues.
 Full base64 payloads are written to ``content/<run_id>/processed/ingestion.json``
 and kept out of both the SSE stream and ``run_metadata.json``.
 """
@@ -21,7 +23,12 @@ from typing_extensions import TypedDict
 
 from app.core.run_manager import run_manager
 from app.core.settings import settings
-from app.pipeline.processors import process_image, process_text, process_video
+from app.pipeline.processors import (
+    process_image,
+    process_model,
+    process_text,
+    process_video,
+)
 
 
 class PipelineState(TypedDict):
@@ -113,6 +120,28 @@ async def process_video_node(state: PipelineState) -> dict:
     )
 
 
+async def process_model_node(state: PipelineState) -> dict:
+    run_id = state["run_id"]
+    model_rel = _inputs(run_id).get("model_3d_path")
+    if not model_rel:
+        return _emit(state, "model_skipped", {"reason": "no 3D model provided"})
+
+    try:
+        model_result = await process_model(
+            _abs_path(run_id, model_rel), settings.renderer_sidecar_url
+        )
+    except Exception as e:  # noqa: BLE001 - 3D model is optional; failure is non-fatal
+        return _emit(state, "model_failed", {"error": str(e)})
+
+    results = {**state["results"], "model_3d": model_result}
+    return _emit(
+        state,
+        "model_processed",
+        {"thumbnail_count": model_result["metrics"]["thumbnail_count"]},
+        results=results,
+    )
+
+
 def finalize_node(state: PipelineState) -> dict:
     run_id = state["run_id"]
     results = state["results"]
@@ -128,6 +157,9 @@ def finalize_node(state: PipelineState) -> dict:
         "text_fields": list(results.get("text", {})),
         "image_processed": "image" in results,
         "video_frame_count": results.get("video", {}).get("metrics", {}).get("frame_count", 0),
+        "model_3d_thumbnail_count": results.get("model_3d", {})
+        .get("metrics", {})
+        .get("thumbnail_count", 0),
     }
     run_manager.update_metadata(run_id, {"ingestion": summary})
     return _emit(state, "ingestion_complete", summary)
@@ -151,6 +183,7 @@ def build_graph():
     builder.add_node("process_text", process_text_node)
     builder.add_node("process_image", process_image_node)
     builder.add_node("process_video", process_video_node)
+    builder.add_node("process_model", process_model_node)
     builder.add_node("finalize", finalize_node)
     builder.add_node("complete", complete_node)
 
@@ -160,7 +193,8 @@ def build_graph():
     builder.add_conditional_edges(
         "process_image", _route_after_image, {"process_video": "process_video", END: END}
     )
-    builder.add_edge("process_video", "finalize")
+    builder.add_edge("process_video", "process_model")
+    builder.add_edge("process_model", "finalize")
     builder.add_edge("finalize", "complete")
     builder.add_edge("complete", END)
     return builder.compile()

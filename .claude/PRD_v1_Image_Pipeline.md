@@ -829,8 +829,8 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 - [x] Build submission form in Next.js: compulsory fields + all optional inputs + mode selector + supervision panel.
 - [x] Build FastAPI ingestion endpoint: validates required fields, file types, and size limits.
-- [ ] Implement video keyframe extraction via FFmpeg sidecar (1 FPS, max 15 frames).
-- [ ] Implement 3D model rendering via Three.js sidecar (4 perspective thumbnails).
+- [x] Implement video keyframe extraction via FFmpeg sidecar (1 FPS, max 15 frames).
+- [x] Implement 3D model rendering via Three.js sidecar (4 perspective thumbnails).
 - [ ] Build Vision Agent (GPT-4o Vision): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON.
 - [ ] Build Summarizer Agent (Claude Haiku): merges product profile + description fields into Input Summary Card.
 - [ ] Display Input Summary Card on dashboard.

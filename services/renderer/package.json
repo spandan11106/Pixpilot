@@ -2,13 +2,18 @@
   "name": "pixpilot-renderer",
   "version": "0.1.0",
   "description": "Three.js headless 3D model renderer sidecar",
+  "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js"
   },
   "dependencies": {
-    "express": "^4.19.0"
+    "express": "^4.19.0",
+    "gl": "^8.1.6",
+    "node-three-gltf": "^1.2.0",
+    "pngjs": "^7.0.0",
+    "three": "^0.160.0"
   },
   "engines": {
     "node": ">=20"

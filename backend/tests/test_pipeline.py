@@ -8,7 +8,9 @@ from app.pipeline import graph
 from app.pipeline.graph import run_pipeline
 
 
-def _make_run(tmp_content_dir: Path, *, with_image=True, with_video=False) -> str:
+def _make_run(
+    tmp_content_dir: Path, *, with_image=True, with_video=False, with_model=False
+) -> str:
     run_id = run_manager.create_run()
     inputs_dir = tmp_content_dir / run_id / "inputs"
     inputs = {
@@ -17,6 +19,7 @@ def _make_run(tmp_content_dir: Path, *, with_image=True, with_video=False) -> st
         "description_colors": "Cream, matte gold.",
         "image_path": None,
         "video_path": None,
+        "model_3d_path": None,
     }
     if with_image:
         img = inputs_dir / "product_image_p.jpg"
@@ -25,6 +28,9 @@ def _make_run(tmp_content_dir: Path, *, with_image=True, with_video=False) -> st
     if with_video:
         (inputs_dir / "video_clip.mp4").write_bytes(b"fake")
         inputs["video_path"] = "inputs/video_clip.mp4"
+    if with_model:
+        (inputs_dir / "model_3d_chair.glb").write_bytes(b"fake")
+        inputs["model_3d_path"] = "inputs/model_3d_chair.glb"
     run_manager.update_metadata(run_id, {"inputs": inputs})
     return run_id
 
@@ -42,6 +48,7 @@ async def test_pipeline_text_and_image_no_video(tmp_content_dir: Path):
         "text_processed",
         "image_processed",
         "video_skipped",
+        "model_skipped",
         "ingestion_complete",
         "pipeline_complete",
     ]
@@ -56,6 +63,7 @@ async def test_pipeline_text_and_image_no_video(tmp_content_dir: Path):
     assert meta["ingestion"]["artifact_path"] == "processed/ingestion.json"
     assert meta["ingestion"]["image_processed"] is True
     assert meta["ingestion"]["video_frame_count"] == 0
+    assert meta["ingestion"]["model_3d_thumbnail_count"] == 0
 
 
 async def test_pipeline_with_video(tmp_content_dir: Path, monkeypatch):
@@ -96,6 +104,51 @@ async def test_pipeline_video_failure_is_non_fatal(tmp_content_dir: Path, monkey
     assert "pipeline_complete" in names  # run still completes
     meta = run_manager.get_metadata(run_id)
     assert meta["ingestion"]["video_frame_count"] == 0
+
+
+async def test_pipeline_with_model(tmp_content_dir: Path, monkeypatch):
+    run_id = _make_run(tmp_content_dir, with_model=True)
+
+    async def fake_process_model(path, sidecar_url, **kw):
+        Path(path).unlink(missing_ok=True)
+        return {
+            "status": "success",
+            "filename": Path(path).name,
+            "metrics": {"thumbnail_count": 4, "raw_model_deleted": True},
+            "thumbnails": [
+                {"metrics": {}, "image_payload": "data:image/jpeg;base64,AAAA"}
+                for _ in range(4)
+            ],
+        }
+
+    monkeypatch.setattr(graph, "process_model", fake_process_model)
+
+    events = await _collect(run_id)
+    names = [e["event"] for e in events]
+    assert "model_processed" in names
+    assert next(e for e in events if e["event"] == "model_processed")["data"][
+        "thumbnail_count"
+    ] == 4
+
+    meta = run_manager.get_metadata(run_id)
+    assert meta["ingestion"]["model_3d_thumbnail_count"] == 4
+    artifact = json.loads((tmp_content_dir / run_id / "processed" / "ingestion.json").read_text())
+    assert len(artifact["model_3d"]["thumbnails"]) == 4
+
+
+async def test_pipeline_model_failure_is_non_fatal(tmp_content_dir: Path, monkeypatch):
+    run_id = _make_run(tmp_content_dir, with_model=True)
+
+    async def boom(path, sidecar_url, **kw):
+        raise RuntimeError("unsupported format")
+
+    monkeypatch.setattr(graph, "process_model", boom)
+    events = await _collect(run_id)
+    names = [e["event"] for e in events]
+    assert "model_failed" in names
+    assert "pipeline_complete" in names  # run still completes
+    meta = run_manager.get_metadata(run_id)
+    assert meta["ingestion"]["model_3d_thumbnail_count"] == 0
 
 
 async def test_pipeline_halts_when_image_missing(tmp_content_dir: Path):
