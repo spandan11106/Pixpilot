@@ -66,6 +66,34 @@ def test_upload_video_rejects_avi(client: TestClient):
     assert response.status_code == 422
 
 
+def test_upload_model_accepts_glb(client: TestClient):
+    data = io.BytesIO(b"fake glb")
+    response = client.post(
+        "/api/uploads?file_type=model_3d",
+        files={"file": ("scene.glb", data, "model/gltf-binary")},
+    )
+    assert response.status_code == 200
+
+
+def test_upload_model_accepts_zip(client: TestClient):
+    data = io.BytesIO(b"fake zip")
+    response = client.post(
+        "/api/uploads?file_type=model_3d",
+        files={"file": ("bundle.zip", data, "application/zip")},
+    )
+    assert response.status_code == 200
+
+
+def test_upload_model_rejects_stl(client: TestClient):
+    data = io.BytesIO(b"fake stl")
+    response = client.post(
+        "/api/uploads?file_type=model_3d",
+        files={"file": ("scene.stl", data, "model/stl")},
+    )
+    assert response.status_code == 422
+    assert "stl" in response.json()["detail"].lower()
+
+
 def test_upload_invalid_file_type_param(client: TestClient):
     data = io.BytesIO(b"fake")
     response = client.post(
