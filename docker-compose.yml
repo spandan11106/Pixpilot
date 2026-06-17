@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
-      - content_data:/app/content
+      - ./content:/app/content
     env_file:
       - .env
     environment:
@@ -40,7 +40,7 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - content_data:/app/content
+      - ./content:/app/content
 
   renderer:
     build:
@@ -49,7 +49,4 @@ services:
     ports:
       - "8002:8002"
     volumes:
-      - content_data:/app/content
-
-volumes:
-  content_data:
+      - ./content:/app/content

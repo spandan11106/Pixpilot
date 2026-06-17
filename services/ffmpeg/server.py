@@ -57,6 +57,11 @@ async def extract_frames(req: ExtractFramesRequest) -> ExtractFramesResponse:
         raise HTTPException(status_code=422, detail=f"FFmpeg error: {result.stderr}")
 
     frames = sorted(output_dir.glob("frame_*.jpg"))
+    if not frames:
+        raise HTTPException(
+            status_code=422,
+            detail="No frames extracted; the video may be empty or an unsupported codec.",
+        )
     return ExtractFramesResponse(
         frame_paths=[str(f) for f in frames],
         frame_count=len(frames),
