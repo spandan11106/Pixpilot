@@ -49,6 +49,7 @@ async def upload_file(
     token = str(uuid.uuid4())
     dest_dir: Path = settings.content_dir / "uploads" / token
     dest_dir.mkdir(parents=True, exist_ok=True)
-    (dest_dir / (file.filename or "upload")).write_bytes(content)
+    safe_name = Path(file.filename or "upload").name or "upload"
+    (dest_dir / safe_name).write_bytes(content)
 
     return UploadResponse(upload_token=token)

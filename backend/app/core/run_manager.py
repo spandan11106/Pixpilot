@@ -67,9 +67,10 @@ class RunManager:
         # Move staged files into inputs/
         path_map: dict[str, str | None] = {}
         for field, src in file_map.items():
-            dest = inputs_dir / src.name
+            dest_name = f"{field}_{src.name}"
+            dest = inputs_dir / dest_name
             shutil.move(str(src), dest)
-            path_map[field] = f"inputs/{src.name}"
+            path_map[field] = f"inputs/{dest_name}"
 
         inputs_meta = {
             "description_product": payload["description_product"],

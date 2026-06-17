@@ -3,6 +3,7 @@
 Stub for Milestone 0. Full implementation in Milestone 1.
 """
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -35,6 +36,10 @@ async def extract_frames(req: ExtractFramesRequest) -> ExtractFramesResponse:
         raise HTTPException(status_code=404, detail=f"File not found: {req.file_path}")
 
     output_dir = input_path.parent / "frames"
+    # Clear any frames left over from a previous extraction so the glob below
+    # only returns frames produced by this run.
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_pattern = str(output_dir / "frame_%04d.jpg")
 

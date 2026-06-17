@@ -1,6 +1,5 @@
 """LangGraph pipeline stub — Milestone 0. Real agent nodes added in Milestones 1–3."""
 
-import asyncio
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
@@ -44,8 +43,10 @@ pipeline = build_graph()
 
 
 async def run_pipeline(run_id: str) -> AsyncGenerator[dict, None]:
-    """Execute the pipeline and yield SSE events as they are emitted."""
+    """Execute the pipeline and yield SSE events as each node emits them."""
     state: PipelineState = {"run_id": run_id, "events": []}
-    result = await asyncio.to_thread(pipeline.invoke, state)
-    for event in result["events"]:
-        yield event
+    async for chunk in pipeline.astream(state, stream_mode="updates"):
+        for node_update in chunk.values():
+            new_events = node_update.get("events", [])
+            if new_events:
+                yield new_events[-1]

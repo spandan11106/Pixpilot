@@ -25,9 +25,10 @@ def process_markdown(file_path: str) -> Dict[str, Any]:
     naked_url_pattern = r'https?://\S+|www\.\S+'
     clean_text = re.sub(naked_url_pattern, '', clean_text)
 
-    # Structural cleanup. 
+    # Structural cleanup. Collapse runs of 3+ blank lines only; preserve
+    # intra-line spacing since Markdown uses it for hard breaks, nested
+    # lists, and indented code blocks.
     clean_text = re.sub(r'\n{3,}', '\n\n', clean_text)
-    clean_text = re.sub(r' {2,}', ' ', clean_text)
     clean_text = clean_text.strip()
 
     word_count = len(clean_text.split())
