@@ -326,8 +326,11 @@
 .pp-dash .finput { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 14px; color: var(--fg); background: var(--card); outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
 .pp-dash .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 .pp-dash .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+/* allow grid items to shrink below their content so the preview strip
+   scrolls instead of widening the column */
+.pp-dash .grid-2 > *, .pp-dash .grid-3 > * { min-width: 0; }
 
-.pp-dash .dropzone { position: relative; border: 1.5px dashed var(--border); border-radius: var(--radius-md); padding: var(--space-4); cursor: pointer; background: var(--card); transition: border-color 0.15s, background 0.15s; }
+.pp-dash .dropzone { position: relative; border: 1.5px dashed var(--border); border-radius: var(--radius-md); padding: var(--space-4); cursor: pointer; background: var(--card); transition: border-color 0.15s, background 0.15s; min-width: 0; }
 .pp-dash .dropzone:hover, .pp-dash .dropzone.drag { border-color: var(--primary); background: rgba(48,62,210,0.04); }
 .pp-dash .dropzone.filled { border-style: solid; border-color: var(--primary); }
 .pp-dash .dropzone.dz-error { border-color: var(--destructive); background: rgba(220,38,38,0.04); }
@@ -346,7 +349,7 @@
 .pp-dash .dz-remove svg { width: 15px; height: 15px; }
 .pp-dash .req-tag { position: absolute; top: 10px; right: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--destructive); }
 .pp-dash .dropzone.filled .req-tag { display: none; }
-.pp-dash .dz-preview { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px dashed var(--border); }
+.pp-dash .dz-preview { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px dashed var(--border); min-width: 0; }
 .pp-dash .dz-preview-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-fg); margin-bottom: var(--space-2); display: flex; align-items: center; gap: 6px; }
 .pp-dash .dz-strip { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: 6px; }
 .pp-dash .dz-strip::-webkit-scrollbar { height: 6px; }
