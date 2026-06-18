@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 def _valid_body(image_token: str, **overrides) -> dict:
     body = {
+        "generation_name": "Argan Oil Launch",
         "description_product": "Organic argan oil, 30ml amber dropper bottle.",
         "description_audience": "Women aged 28-45, natural skincare.",
         "description_colors": "Soft pastels, warm cream, matte gold.",
@@ -67,6 +68,43 @@ def test_submit_writes_run_metadata(client: TestClient, stage_file, tmp_content_
     assert meta["inputs"]["image_path"] == "inputs/product_image_product.jpg"
     assert meta["steering"]["aspect_ratio"] == "1:1"
     assert meta["supervision"]["research"] is True
+
+
+def test_submit_persists_generation_name(client: TestClient, stage_file, tmp_content_dir: Path):
+    import json
+
+    token = stage_file("product.jpg")
+    body = _valid_body(token, generation_name="Summer Sneaker Launch")
+    response = client.post("/api/runs/submit", json=body)
+    run_id = response.json()["run_id"]
+    meta = json.loads((tmp_content_dir / run_id / "run_metadata.json").read_text())
+    assert meta["generation_name"] == "Summer Sneaker Launch"
+
+
+def test_submit_rejects_missing_generation_name(client: TestClient, stage_file):
+    token = stage_file("product.jpg")
+    body = _valid_body(token, generation_name="")
+    response = client.post("/api/runs/submit", json=body)
+    assert response.status_code == 422
+
+
+def test_submit_allows_unset_steering(client: TestClient, stage_file, tmp_content_dir: Path):
+    import json
+
+    token = stage_file("product.jpg")
+    body = _valid_body(token, steering={
+        "aspect_ratio": None,
+        "camera_perspective": None,
+        "lighting_preset": None,
+        "negative_prompts": "",
+    })
+    response = client.post("/api/runs/submit", json=body)
+    assert response.status_code == 201
+    run_id = response.json()["run_id"]
+    meta = json.loads((tmp_content_dir / run_id / "run_metadata.json").read_text())
+    assert meta["steering"]["aspect_ratio"] is None
+    assert meta["steering"]["camera_perspective"] is None
+    assert meta["steering"]["lighting_preset"] is None
 
 
 def test_submit_rejects_missing_description_field(client: TestClient, stage_file):

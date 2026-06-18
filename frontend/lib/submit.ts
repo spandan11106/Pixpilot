@@ -2,9 +2,9 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export interface SteeringParams {
-  aspect_ratio: string;
-  camera_perspective: string;
-  lighting_preset: string;
+  aspect_ratio: string | null;
+  camera_perspective: string | null;
+  lighting_preset: string | null;
   negative_prompts: string;
 }
 

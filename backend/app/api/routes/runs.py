@@ -18,15 +18,17 @@ SeasonalTheme = Literal[
 ]
 
 class SteeringParams(BaseModel):
-    aspect_ratio: Literal["1:1", "9:16", "16:9", "4:5"] = "1:1"
+    # All visual-steering fields are optional. None means "let the image
+    # generation model decide" rather than forcing a default.
+    aspect_ratio: Literal["1:1", "9:16", "16:9", "4:5"] | None = None
     camera_perspective: Literal[
         "Studio Eye-Level", "Flat Lay (Top-Down)", "Close-Up Macro",
         "Dynamic 3/4 View", "Hero Shot (Low Angle)",
-    ] = "Studio Eye-Level"
+    ] | None = None
     lighting_preset: Literal[
         "Studio Softlight", "Natural Sunshine", "Golden Hour Warmth",
         "Moody / Chiaroscuro", "Neon / Cyberpunk", "Minimalist Pastel",
-    ] = "Studio Softlight"
+    ] | None = None
     negative_prompts: str = ""
 
 
@@ -36,6 +38,7 @@ class SupervisionSettings(BaseModel):
 
 
 class SubmitPayload(BaseModel):
+    generation_name: Annotated[str, Field(min_length=1)]
     description_product: Annotated[str, Field(min_length=1)]
     description_audience: Annotated[str, Field(min_length=1)]
     description_colors: Annotated[str, Field(min_length=1)]

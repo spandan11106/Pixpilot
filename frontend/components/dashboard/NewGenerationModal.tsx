@@ -111,9 +111,9 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
         model_3d_token: model3dToken,
         reference_image_token: referenceToken,
         steering: {
-          aspect_ratio: aspectRatio,
-          camera_perspective: cameraPerspective,
-          lighting_preset: lightingPreset,
+          aspect_ratio: aspectRatio || null,
+          camera_perspective: cameraPerspective || null,
+          lighting_preset: lightingPreset || null,
           negative_prompts: negativePrompts,
         },
         pipeline_mode: pipelineMode,

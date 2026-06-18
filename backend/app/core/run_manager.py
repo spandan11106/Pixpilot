@@ -9,6 +9,7 @@ from app.core.settings import settings
 
 _INITIAL_METADATA = {
     "run_id": None,
+    "generation_name": None,
     "created_at": None,
     "completed_at": None,
     "status": "running",
@@ -85,6 +86,7 @@ class RunManager:
         metadata = {
             **_INITIAL_METADATA,
             "run_id": run_id,
+            "generation_name": payload.get("generation_name"),
             "created_at": _now(),
             "pipeline_mode": payload["pipeline_mode"],
             "seasonal_theme": payload.get("seasonal_theme"),
