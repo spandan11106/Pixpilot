@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState, type ReactNode } from "react";
 import { uploadFile } from "@/lib/upload";
+import { extractKeyframes, type Keyframe } from "./keyframes";
 import { ImageIcon, VideoIcon, CubeIcon, UploadIcon, XIcon } from "./icons";
 
 type PreviewKind = "image" | "frames" | "views";
@@ -14,6 +15,7 @@ const grads = [
   "linear-gradient(135deg,#303ED2,#EEC04A)",
   "linear-gradient(135deg,#B026D3,#303ED2)",
 ];
+const VIEWS = ["Front", "3/4 View", "Side", "Back"];
 
 const fileIcon: Record<"image" | "video" | "cube", ReactNode> = {
   image: <ImageIcon strokeWidth={1.8} />,
@@ -38,10 +40,11 @@ export type DropzoneProps = {
   required?: boolean;
   promptIcon?: ReactNode;
   onToken: (token: string | null) => void;
+  onZoom?: (src: string) => void;
 };
 
 export function Dropzone({
-  fileType, accept, title, sub, preview, icon, maxMB, required, promptIcon, onToken,
+  fileType, accept, title, sub, preview, icon, maxMB, required, promptIcon, onToken, onZoom,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const objUrlRef = useRef<string | null>(null);
@@ -50,6 +53,8 @@ export function Dropzone({
   const [uploading, setUploading] = useState(false);
   const [drag, setDrag] = useState(false);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [frames, setFrames] = useState<Keyframe[] | null>(null);
+  const [framesLoading, setFramesLoading] = useState(false);
   const reactId = useId();
 
   const filled = !!file && !error;
@@ -61,24 +66,36 @@ export function Dropzone({
     }
   }
 
+  function buildPreview(f: File) {
+    if (preview === "image") {
+      revoke();
+      const url = URL.createObjectURL(f);
+      objUrlRef.current = url;
+      setImgUrl(url);
+    } else if (preview === "frames") {
+      setFrames(null);
+      setFramesLoading(true);
+      extractKeyframes(f)
+        .then(setFrames)
+        .catch(() => setFrames([])) // graceful: show "no preview" rather than fake tiles
+        .finally(() => setFramesLoading(false));
+    }
+  }
+
   async function handleFile(f: File | undefined) {
     if (!f) return;
     if (maxMB && f.size > maxMB * 1048576) {
       setFile(f);
       setError(`Too large · max ${maxMB}MB`);
       setImgUrl(null);
+      setFrames(null);
       revoke();
       onToken(null);
       return;
     }
     setFile(f);
     setError(null);
-    if (preview === "image") {
-      revoke();
-      const url = URL.createObjectURL(f);
-      objUrlRef.current = url;
-      setImgUrl(url);
-    }
+    buildPreview(f);
     setUploading(true);
     onToken(null);
     try {
@@ -99,6 +116,8 @@ export function Dropzone({
     setFile(null);
     setError(null);
     setImgUrl(null);
+    setFrames(null);
+    setFramesLoading(false);
     onToken(null);
   }
 
@@ -147,42 +166,56 @@ export function Dropzone({
       )}
 
       {filled && !uploading && (
-        <Preview kind={preview} imgUrl={imgUrl} fileName={file!.name} />
-      )}
-    </div>
-  );
-}
+        <div className="dz-preview" onClick={(e) => e.stopPropagation()}>
+          {preview === "image" && imgUrl && (
+            <>
+              <div className="dz-preview-label">Preview</div>
+              <div className="dz-strip">
+                <button type="button" className="dz-frame dz-zoom" onClick={() => onZoom?.(imgUrl)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imgUrl} alt={file!.name} />
+                </button>
+              </div>
+            </>
+          )}
 
-function Preview({ kind, imgUrl, fileName }: { kind: PreviewKind; imgUrl: string | null; fileName: string }) {
-  if (kind === "image") {
-    if (!imgUrl) return null;
-    return (
-      <div className="dz-preview" onClick={(e) => e.stopPropagation()}>
-        <div className="dz-preview-label">Preview</div>
-        <div className="dz-strip">
-          <div className="dz-frame">{/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imgUrl} alt={fileName} />
-          </div>
+          {preview === "frames" && (
+            <>
+              <div className="dz-preview-label">
+                {framesLoading
+                  ? "Extracting keyframes…"
+                  : frames && frames.length > 0
+                    ? `Keyframes extracted · ${frames.length}`
+                    : "Preview unavailable"}
+              </div>
+              {!framesLoading && frames && frames.length > 0 && (
+                <div className="dz-strip">
+                  {frames.map((f, i) => (
+                    <button type="button" key={i} className="dz-frame dz-zoom" onClick={() => onZoom?.(f.url)}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={f.url} alt={f.label} />
+                      <span className="flabel">{f.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {preview === "views" && (
+            <>
+              <div className="dz-preview-label">Generated views · {VIEWS.length}</div>
+              <div className="dz-strip">
+                {VIEWS.map((l, i) => (
+                  <div key={l} className="dz-frame" style={{ background: grads[i % grads.length] }}>
+                    <span className="flabel">{l}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
-      </div>
-    );
-  }
-  const tiles = kind === "frames"
-    ? ["0:01", "0:04", "0:09", "0:15", "0:21", "0:27"]
-    : ["Front", "3/4 View", "Side", "Back"];
-  const label = kind === "frames"
-    ? `Keyframes extracted · ${tiles.length}`
-    : `Generated views · ${tiles.length}`;
-  return (
-    <div className="dz-preview" onClick={(e) => e.stopPropagation()}>
-      <div className="dz-preview-label">{label}</div>
-      <div className="dz-strip">
-        {tiles.map((t, i) => (
-          <div key={t} className="dz-frame" style={{ background: grads[i % grads.length] }}>
-            <span className="flabel">{t}</span>
-          </div>
-        ))}
-      </div>
+      )}
     </div>
   );
 }

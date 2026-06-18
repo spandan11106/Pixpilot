@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSSE } from "@/lib/sse";
 import { submitRun, type SubmitPayload } from "@/lib/submit";
 import { Dropzone } from "./Dropzone";
+import { Lightbox } from "./Lightbox";
 import { ImageIcon, VideoIcon, CubeIcon, XIcon, CheckIcon, PlusIcon } from "./icons";
 
 const ASPECT_RATIOS = [
@@ -82,13 +83,23 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { messages, connected } = useSSE(runId);
 
+  // Enlarged preview (lightbox)
+  const [zoom, setZoom] = useState<string | null>(null);
+  const zoomRef = useRef<string | null>(null);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+
   const canSubmit =
     !!generationName.trim() && !!productImageToken &&
     !!descProduct.trim() && !!descAudience.trim() && !!descColors.trim();
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      // close the lightbox first if it's open, otherwise the modal
+      if (zoomRef.current) setZoom(null);
+      else onClose();
+    }
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
@@ -141,6 +152,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
         : "Product image + all required fields needed";
 
   return (
+   <>
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="genTitle">
         <div className="modal-head">
@@ -203,6 +215,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                     icon="image"
                     required
                     onToken={setProductImageToken}
+                    onZoom={setZoom}
                   />
                 </div>
 
@@ -233,7 +246,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                   <div className="field">
                     <span className="field-label">Product Video</span>
                     <Dropzone fileType="video" accept=".mp4,.mov,.webm" title="Product Video" sub="MP4 · MOV · WEBM · ≤100MB"
-                      preview="frames" icon="video" maxMB={100} promptIcon={<VideoIcon />} onToken={setVideoToken} />
+                      preview="frames" icon="video" maxMB={100} promptIcon={<VideoIcon />} onToken={setVideoToken} onZoom={setZoom} />
                   </div>
                   <div className="field">
                     <span className="field-label">3D Model</span>
@@ -243,7 +256,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                   <div className="field">
                     <span className="field-label">Reference Image</span>
                     <Dropzone fileType="reference_image" accept=".jpg,.jpeg,.png,.webp" title="Reference Image" sub="JPG · PNG · WEBP"
-                      preview="image" icon="image" promptIcon={<ImageIcon strokeWidth={1.8} />} onToken={setReferenceToken} />
+                      preview="image" icon="image" promptIcon={<ImageIcon strokeWidth={1.8} />} onToken={setReferenceToken} onZoom={setZoom} />
                   </div>
                 </div>
               </section>
@@ -373,5 +386,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
         )}
       </div>
     </div>
+    {zoom && <Lightbox src={zoom} onClose={() => setZoom(null)} />}
+   </>
   );
 }
