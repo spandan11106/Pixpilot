@@ -1,4 +1,5 @@
 import io
+
 from fastapi.testclient import TestClient
 
 
@@ -15,8 +16,6 @@ def test_upload_product_image_returns_token(client: TestClient):
 
 
 def test_upload_stores_file_on_disk(client: TestClient, tmp_content_dir):
-    from pathlib import Path
-
     data = io.BytesIO(b"fake image bytes")
     response = client.post(
         "/api/uploads?file_type=product_image",
