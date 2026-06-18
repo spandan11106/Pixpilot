@@ -94,17 +94,6 @@
 }
 
 .pp-dash .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-3); }
-.pp-dash .gpu-card {
-  background: rgba(255,247,235,0.07);
-  border: 1px solid rgba(255,247,235,0.12);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-}
-.pp-dash .gpu-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-2); }
-.pp-dash .gpu-pct { font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--surface); }
-.pp-dash .gpu-bar { height: 6px; border-radius: 999px; background: rgba(255,247,235,0.15); overflow: hidden; }
-.pp-dash .gpu-bar i { display: block; height: 100%; width: 73%; background: linear-gradient(90deg, var(--accent-1), var(--accent-2)); border-radius: 999px; }
-
 .pp-dash .user-chip { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2); border-radius: var(--radius-md); }
 .pp-dash .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-1); color: var(--secondary); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; font-family: var(--font-display); }
 

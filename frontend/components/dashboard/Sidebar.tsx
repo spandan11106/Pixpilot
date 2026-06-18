@@ -28,13 +28,6 @@ export function Sidebar() {
       </nav>
 
       <div className="sidebar-foot">
-        <div className="gpu-card">
-          <div className="row">
-            <span className="caption" style={{ color: "rgba(255,247,235,0.6)" }}>GPU cluster</span>
-            <span className="gpu-pct">73%</span>
-          </div>
-          <div className="gpu-bar"><i /></div>
-        </div>
         <div className="user-chip">
           <span className="avatar">AR</span>
           <div style={{ minWidth: 0 }}>
