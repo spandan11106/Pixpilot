@@ -59,10 +59,10 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
   const [model3dToken, setModel3dToken] = useState<string | null>(null);
   const [referenceToken, setReferenceToken] = useState<string | null>(null);
 
-  // Steering
-  const [aspectRatio, setAspectRatio] = useState("1:1");
-  const [cameraPerspective, setCameraPerspective] = useState("Studio Eye-Level");
-  const [lightingPreset, setLightingPreset] = useState("Studio Softlight");
+  // Steering — all optional; empty means "let the model decide"
+  const [aspectRatio, setAspectRatio] = useState("");
+  const [cameraPerspective, setCameraPerspective] = useState("");
+  const [lightingPreset, setLightingPreset] = useState("");
   const [negativePrompts, setNegativePrompts] = useState("");
 
   // Mode + conditional
@@ -250,14 +250,15 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
 
               {/* 3. Visual Steering */}
               <section className="form-section">
-                <div className="section-title"><span className="section-num">3</span><h3 className="heading-3">Visual Steering</h3></div>
+                <div className="section-title"><span className="section-num">3</span><h3 className="heading-3">Visual Steering</h3><span className="opt">Optional</span></div>
+                <span className="field-hint">Tap a selection again to clear it. Anything you leave unset, the image generation model decides for you.</span>
 
                 <div className="field">
                   <span className="field-label">Aspect Ratio</span>
                   <div className="seg">
                     {ASPECT_RATIOS.map((ar) => (
                       <button type="button" key={ar.value} className={aspectRatio === ar.value ? "selected" : ""}
-                        onClick={() => setAspectRatio(ar.value)}>
+                        onClick={() => setAspectRatio((v) => (v === ar.value ? "" : ar.value))}>
                         <span className="ar-box" style={{ width: ar.w, height: ar.h }} />{ar.value}
                       </button>
                     ))}
@@ -269,7 +270,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                   <div className="chip-grid">
                     {CAMERAS.map((c) => (
                       <button type="button" key={c} className={`chip ${cameraPerspective === c ? "selected" : ""}`}
-                        onClick={() => setCameraPerspective(c)}>
+                        onClick={() => setCameraPerspective((v) => (v === c ? "" : c))}>
                         {c}<CheckIcon className="ck" />
                       </button>
                     ))}
@@ -281,7 +282,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                   <div className="chip-grid">
                     {LIGHTING.map((l) => (
                       <button type="button" key={l.name} className={`chip ${lightingPreset === l.name ? "selected" : ""}`}
-                        onClick={() => setLightingPreset(l.name)}>
+                        onClick={() => setLightingPreset((v) => (v === l.name ? "" : l.name))}>
                         <span className="swatch" style={{ background: l.swatch }} />{l.name}<CheckIcon className="ck" />
                       </button>
                     ))}
