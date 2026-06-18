@@ -92,3 +92,7 @@ frontend/.env.local
 # Allow frontend/lib (overrides the lib/ pattern above)
 !frontend/lib/
 !frontend/lib/**
+
+# Design system build artifacts (design-sync outputs)
+ds-bundle/
+.design-sync/
