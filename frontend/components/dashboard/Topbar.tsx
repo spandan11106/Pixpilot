@@ -1,4 +1,5 @@
-import { SearchIcon, BellIcon, DownloadIcon, PlusIcon } from "./icons";
+import { SearchIcon, BellIcon, DownloadIcon } from "./icons";
+import { NewGeneration } from "./NewGeneration";
 
 export function Topbar() {
   return (
@@ -13,7 +14,7 @@ export function Topbar() {
           <span className="dot" />
         </button>
         <button className="btn btn-outline btn-sm"><DownloadIcon /> Export</button>
-        <button className="btn btn-cta"><PlusIcon /> New Generation</button>
+        <NewGeneration />
       </div>
     </header>
   );
