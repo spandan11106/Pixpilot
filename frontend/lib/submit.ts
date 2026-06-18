@@ -14,6 +14,7 @@ export interface SupervisionSettings {
 }
 
 export interface SubmitPayload {
+  generation_name: string;
   description_product: string;
   description_audience: string;
   description_colors: string;

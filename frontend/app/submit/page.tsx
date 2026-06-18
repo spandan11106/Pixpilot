@@ -64,11 +64,13 @@ function FileField({ label, fileType, accept, onToken }: {
 
 export default function Home() {
   const [runId, setRunId] = useState<string | null>(null);
+  const [submittedName, setSubmittedName] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { messages, connected } = useSSE(runId);
 
   // Required
+  const [generationName, setGenerationName] = useState("");
   const [productImageToken, setProductImageToken] = useState<string | null>(null);
   const [descProduct, setDescProduct] = useState("");
   const [descAudience, setDescAudience] = useState("");
@@ -96,7 +98,7 @@ export default function Home() {
   const [supervisionResearch, setSupervisionResearch] = useState(true);
   const [supervisionImageGen, setSupervisionImageGen] = useState(true);
 
-  const canSubmit = !!productImageToken && descProduct.trim() && descAudience.trim() && descColors.trim();
+  const canSubmit = !!generationName.trim() && !!productImageToken && descProduct.trim() && descAudience.trim() && descColors.trim();
 
   async function handleSubmit() {
     if (!productImageToken) return;
@@ -104,6 +106,7 @@ export default function Home() {
     setSubmitError(null);
     try {
       const payload: SubmitPayload = {
+        generation_name: generationName.trim(),
         description_product: descProduct.trim(),
         description_audience: descAudience.trim(),
         description_colors: descColors.trim(),
@@ -125,6 +128,7 @@ export default function Home() {
         supervision: { research: supervisionResearch, image_gen: supervisionImageGen },
       };
       const id = await submitRun(payload);
+      setSubmittedName(generationName.trim());
       setRunId(id);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Submission failed");
@@ -153,6 +157,15 @@ export default function Home() {
                 <AccordionItem value="required">
                   <AccordionTrigger>Required Inputs</AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-2">
+                    <div className="space-y-1">
+                      <Label>Generation Name</Label>
+                      <Input
+                        placeholder="e.g. Summer Sneaker Launch"
+                        value={generationName}
+                        onChange={e => setGenerationName(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">Shown in the dashboard. The run is stored under a separate generated ID.</p>
+                    </div>
                     <FileField
                       label="Product Image (jpg/png/webp)"
                       fileType="product_image"
@@ -340,7 +353,7 @@ export default function Home() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Pipeline Events</CardTitle>
+                <CardTitle>{submittedName ?? "Pipeline Events"}</CardTitle>
                 <Badge variant={connected ? "default" : "secondary"}>
                   {connected ? "Connected" : "Done"}
                 </Badge>
