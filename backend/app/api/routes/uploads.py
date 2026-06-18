@@ -9,12 +9,11 @@ from app.core.settings import settings
 
 router = APIRouter(prefix="/api/uploads", tags=["uploads"])
 
-FileType = Literal["product_image", "reference_image", "logo", "video", "model_3d"]
+FileType = Literal["product_image", "reference_image", "video", "model_3d"]
 
 _RULES: dict[str, dict] = {
     "product_image":   {"exts": {"jpg", "jpeg", "png", "webp"}, "max_mb": 20},
     "reference_image": {"exts": {"jpg", "jpeg", "png", "webp"}, "max_mb": 20},
-    "logo":            {"exts": {"svg", "png", "jpeg", "jpg"}, "max_mb": 10},
     "video":           {"exts": {"mp4", "mov", "webm"}, "max_mb": 100},
     "model_3d":        {"exts": {"gltf", "glb", "obj", "usdz", "zip"}, "max_mb": 50},
 }

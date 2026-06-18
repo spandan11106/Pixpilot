@@ -45,12 +45,12 @@
 
 Version 1 is a **self-hosted, open-source, multi-mode asset generation pipeline** that a developer or brand owner can clone from GitHub, configure with their own API keys, and run locally or on their own server. There is no managed cloud and no SaaS offering from the maintainer in v1.
 
-A user submits a product image and a structured description — optionally supplemented by a video, 3D model, reference style image, company logo, and visual steering parameters. The system:
+A user submits a product image and a structured description — optionally supplemented by a video, 3D model, reference style image, and visual steering parameters. (The company logo is supplied later, at the post-generation overlay step, not at submission.) The system:
 
 1. **Ingests and analyzes the product** — parses all inputs and uses a Vision Agent + Summarizer Agent to produce a structured product profile.
 2. **Researches the market interactively (optional)** — searches the web in real-time, asks the user clarifying questions with a 1-minute timeout, and presents crossroads decisions for the user to steer the research direction.
 3. **Generates image assets in one of five modes** — the selected mode governs how many images are generated, what artistic direction is used, and whether market research runs.
-4. **Applies logo overlays programmatically** — composites the user's SVG or image logo onto the generated output at the specified corner.
+4. **Applies logo overlays programmatically** — after generation, the user optionally uploads an SVG or image logo and picks a placement corner; the system composites it onto the generated output.
 5. **Generates copy** — creates platform-optimized captions and hashtags for Instagram, TikTok, Facebook, LinkedIn, and X.
 6. **Refines interactively** — shows the generated image and copy; a refinement loop lets users request changes that an agent translates into revised generation prompts.
 7. **Exports assets locally** — saves the approved image and copy assets to disk, ready for manual use.
@@ -136,8 +136,8 @@ Upload product media + inputs
   ├── Product Video (MP4/MOV/WEBM) — optional
   ├── 3D Model (GLTF/OBJ/USDZ) — optional
   ├── Reference Image (style/mood guide) — optional
-  ├── Company Logo (SVG/PNG) + placement corner — optional
   └── Visual Steering: aspect ratio, camera angle, lighting preset, negative prompts — optional
+  (Company Logo is NOT collected here — it is uploaded later at the post-generation overlay step.)
         │
         ▼
 Select Pipeline Mode
@@ -168,7 +168,7 @@ Click "Run"
         │
         ▼
   [Image Generation Agent — F-4]
-  Generates image(s) based on mode; applies logo overlay if provided
+  Generates image(s) based on mode; user can then upload a logo + pick a corner to overlay
         │
         ▼
   [CHECKPOINT B — if supervision ON]
@@ -210,8 +210,9 @@ Click "Run"
 |---|---|---|
 | **Product Video** | MP4, MOV, WEBM (max 100MB / 2 min) | FFmpeg extracts keyframes (1 FPS, max 15 frames) to enrich vision analysis with texture, motion, and usage context. |
 | **3D Model** | GLTF, OBJ, USDZ | Rendered to 4 high-res thumbnail perspectives (front, back, side, top-down) using a headless Three.js sidecar. Captures accurate geometry and spatial proportions. |
-| **Reference Image** | JPEG, PNG, WEBP | The Vision Agent analyzes this to extract visual rules: lighting style, composition, depth of field, background type, and overall aesthetic. These rules are injected into the image generation prompt. |
-| **Company Logo** | SVG, PNG, JPEG | Composited programmatically post-generation (never passed to the generative model). User selects placement corner: `Top-Left`, `Top-Right`, `Bottom-Left` (default), `Bottom-Right`, `Center Watermark`. Opacity is configurable. |
+| **Reference Image** | JPEG, PNG, WEBP | Processed during ingestion (downscaled + Base64-encoded), then analyzed by the Vision Agent to extract visual rules: lighting style, composition, depth of field, background type, and overall aesthetic. These rules are injected into the image generation prompt. |
+
+> **Note:** The **company logo is not a submission-time input.** It is uploaded later, at the post-generation Logo Overlay step (see F-4), where the user also selects its placement corner. The logo is never sent to the vision model or the image generator — this saves tokens and avoids the distortion the generative model introduces when a logo is baked into the prompt.
 
 ---
 
@@ -256,10 +257,11 @@ The ingestion layer validates and processes all user inputs before passing them 
 - All uploaded files stored in the run's `content/<run_id>/inputs/` directory.
 
 **Processing:**
-- Product Image → Base64-encoded for LLM vision analysis.
+- Product Image → downscaled and Base64-encoded (JPEG data URI) for LLM vision analysis.
+- Reference Image (if provided) → processed during ingestion alongside the product image: downscaled and Base64-encoded (JPEG data URI) for Vision Agent style extraction. Optional and non-fatal — a missing or failed reference image is skipped and the run continues.
 - Video → FFmpeg Docker sidecar extracts keyframes at 1 FPS (max 15 frames). Raw video deleted after extraction.
 - 3D Model → Headless Three.js/WebGL sidecar renders 4 perspective thumbnails as PNG files.
-- Reference Image → Passed directly to the Vision Agent for style extraction.
+- Company Logo → **not** ingested or processed at this stage. It is collected at the post-generation Logo Overlay step (F-4) and never passed to the vision model or image generator.
 
 ---
 
@@ -459,9 +461,10 @@ The Image Agent takes the Creative Blueprint (or raw product profile if research
 - **Quantities**: Governed by the selected mode (see F-2).
 
 **Logo compositing:**
+- The logo is collected **at this post-generation step**, not at submission. After the FLUX image is generated, the user optionally uploads a logo (SVG, PNG, or JPEG) and selects its placement corner: `Top-Left`, `Top-Right`, `Bottom-Left` (default), `Bottom-Right`, or `Center Watermark`.
 - The logo is never passed to the generative model (which produces distorted, garbled results).
-- After the FLUX image is downloaded, the **Logo Overlay Node** (Sharp / Canvas in Node.js) programmatically composites the logo onto the image at the user's selected corner with a configurable margin and opacity.
-- Logo compositing is re-applied on every revision iteration automatically.
+- The **Logo Overlay Node** (Sharp / Canvas in Node.js) then programmatically composites the logo onto the image at the selected corner with a configurable margin and opacity.
+- If the user supplies a logo, compositing is re-applied on every revision iteration automatically.
 
 #### User Preview & Revision Loop
 
@@ -513,7 +516,7 @@ The dashboard is a Next.js 14 (App Router) web application served locally.
 
 **Submission Form:**
 - Compulsory: Product Image drag-and-drop zone + 3-part description (Product Info, Target Audience, Desired Colors).
-- Optional Media: Video upload, 3D Model upload, Reference Image upload, Logo upload + corner placement selector.
+- Optional Media: Video upload, 3D Model upload, Reference Image upload. (Logo upload + corner placement is collected later, at the post-generation Image Revision Canvas / Logo Overlay step — not on this form.)
 - Steering Parameters: Aspect Ratio selector, Camera Perspective dropdown, Lighting/Vibe Preset dropdown, Negative Prompts text area.
 - Mode Selector: Dropdown for the 5 pipeline modes.
 - Supervision settings panel.
@@ -525,7 +528,7 @@ The dashboard is a Next.js 14 (App Router) web application served locally.
   - **Research Question Checkpoint**: 60-second countdown timer card with text input.
   - **Crossroads Checkpoint**: Two-option selection card.
   - **Research Approval Card**: Full research report with approve/revise controls.
-  - **Image Revision Canvas**: Generated image(s) with revision chat input, approve, and restart buttons.
+  - **Image Revision Canvas**: Generated image(s) with revision chat input, approve, and restart buttons; also offers an optional logo upload + corner placement selector that triggers the post-generation Logo Overlay.
   - **Final Review Deck**: All approved images with per-image download buttons.
 
 ---
@@ -657,6 +660,7 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
                                      ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         LOGO COMPOSITING NODE  (Sharp)                   │
+│  · User optionally uploads a logo + picks a corner at this step           │
 │  · Programmatically overlays logo at user-specified corner               │
 │  · Respects margin + opacity config                                      │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -685,7 +689,7 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
 │                  LOCAL FILESYSTEM  (content/ directory)                  │
 │  content/                                                                │
 │  └── <run_id>/                  ← one folder per pipeline run           │
-│      ├── inputs/                ← uploaded product image, video, logo   │
+│      ├── inputs/                ← product image, video, model, reference│
 │      ├── v1.png … vN.png        ← image iterations (approved = latest)  │
 │      └── run_metadata.json      ← full run record (see schema below)    │
 │  workspace_settings.json        ← supervision & steering defaults       │
@@ -707,9 +711,10 @@ content/
     │   ├── product_image.jpg        ← uploaded base image (required)
     │   ├── video.mp4                ← optional video
     │   ├── model.gltf               ← optional 3D model
-    │   ├── reference.jpg            ← optional style reference image
-    │   └── logo.png                 ← optional logo
-    ├── v1.png                       ← first generated image (with logo overlay)
+    │   └── reference.jpg            ← optional style reference image
+    ├── overlay/
+    │   └── logo.png                 ← optional logo, uploaded at the post-generation overlay step (not at submission)
+    ├── v1.png                       ← first generated image (logo overlaid if a logo was uploaded)
     ├── v2.png                       ← revision 1 output
     ├── vN.png                       ← approved image = highest vN
     └── run_metadata.json            ← full run record (see schema below)
@@ -739,8 +744,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
     "video_path": "inputs/video.mp4",
     "model_3d_path": null,
     "reference_image_path": "inputs/reference.jpg",
-    "logo_path": "inputs/logo.png",
-    "logo_placement": "bottom-left"
+    "reference_image_processed": true
   },
 
   "steering": {
@@ -778,6 +782,11 @@ Written progressively as the pipeline executes. Each agent node appends or updat
       "user_feedback": "make the background darker"
     }
   ],
+
+  "logo_overlay": {
+    "logo_path": null,
+    "logo_placement": null
+  },
 
   "approved_image": "v2.png",
 
@@ -827,10 +836,11 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 ### Milestone 1 — Ingestion, Vision Analysis & Summarizer *(Week 3–4)*
 
-- [x] Build submission form in Next.js: compulsory fields + all optional inputs + mode selector + supervision panel.
+- [x] Build submission form in Next.js: compulsory fields + optional inputs (video, 3D model, reference image; logo is collected later at the overlay step) + steering params + mode selector + supervision panel.
 - [x] Build FastAPI ingestion endpoint: validates required fields, file types, and size limits.
 - [x] Implement video keyframe extraction via FFmpeg sidecar (1 FPS, max 15 frames).
 - [x] Implement 3D model rendering via Three.js sidecar (4 perspective thumbnails).
+- [x] Process reference style image during ingestion (downscale + base64) for Vision Agent consumption.
 - [ ] Build Vision Agent (GPT-4o Vision): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON.
 - [ ] Build Summarizer Agent (Claude Haiku): merges product profile + description fields into Input Summary Card.
 - [ ] Display Input Summary Card on dashboard.
@@ -860,7 +870,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 - [ ] Build Image Designer Agent: constructs FLUX prompt from Creative Blueprint + steering parameters.
 - [ ] Integrate fal.ai FLUX Dev image-to-image endpoint with async polling.
 - [ ] Implement content moderation gate + 2 auto-retries on flagged output.
-- [ ] Implement Logo Compositing Node (Sharp): applies logo at selected corner post-generation.
+- [ ] Implement Logo Compositing Node (Sharp): user uploads a logo and selects its placement corner at this post-generation step, then the node applies it at the selected corner.
 - [ ] Build Image Revision Canvas on dashboard: shows generated image(s) with approve / revise / restart controls.
 - [ ] Build Refinement Agent (Claude Sonnet): rewrites prompt from user's natural language feedback.
 - [ ] Implement revision loop (max 10 iterations); save each output as `vN.png` and append iteration record to `run_metadata.json` under `image_iterations`.

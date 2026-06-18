@@ -17,11 +17,6 @@ SeasonalTheme = Literal[
     "Black Friday", "Valentine's Day", "Eid", "Hanukkah", "New Year",
 ]
 
-LogoPlacement = Literal[
-    "top-left", "top-right", "bottom-left", "bottom-right", "center-watermark"
-]
-
-
 class SteeringParams(BaseModel):
     aspect_ratio: Literal["1:1", "9:16", "16:9", "4:5"] = "1:1"
     camera_perspective: Literal[
@@ -49,8 +44,6 @@ class SubmitPayload(BaseModel):
     video_token: str | None = None
     model_3d_token: str | None = None
     reference_image_token: str | None = None
-    logo_token: str | None = None
-    logo_placement: LogoPlacement = "bottom-left"
 
     steering: SteeringParams = SteeringParams()
     pipeline_mode: PipelineMode = "ecommerce"
@@ -125,7 +118,6 @@ async def submit_run(payload: SubmitPayload) -> CreateRunResponse:
         "video": payload.video_token,
         "model_3d": payload.model_3d_token,
         "reference_image": payload.reference_image_token,
-        "logo": payload.logo_token,
     }
     for field, token in optional_tokens.items():
         path = _resolve_token(token, field)

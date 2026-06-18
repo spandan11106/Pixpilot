@@ -11,8 +11,6 @@ def _valid_body(image_token: str, **overrides) -> dict:
         "video_token": None,
         "model_3d_token": None,
         "reference_image_token": None,
-        "logo_token": None,
-        "logo_placement": "bottom-left",
         "steering": {
             "aspect_ratio": "1:1",
             "camera_perspective": "Studio Eye-Level",
@@ -104,18 +102,17 @@ def test_submit_rejects_seasonal_mode_without_theme(client: TestClient, stage_fi
     assert response.status_code == 422
 
 
-def test_submit_with_optional_logo_token(
+def test_submit_with_optional_reference_image_token(
     client: TestClient, stage_file, tmp_content_dir: Path
 ):
     import json
 
     img_token = stage_file("product.jpg")
-    logo_token = stage_file("logo.png")
-    body = _valid_body(img_token, logo_token=logo_token, logo_placement="top-right")
+    ref_token = stage_file("reference.png")
+    body = _valid_body(img_token, reference_image_token=ref_token)
     response = client.post("/api/runs/submit", json=body)
     assert response.status_code == 201
     run_id = response.json()["run_id"]
-    assert (tmp_content_dir / run_id / "inputs" / "logo_logo.png").exists()
+    assert (tmp_content_dir / run_id / "inputs" / "reference_image_reference.png").exists()
     meta = json.loads((tmp_content_dir / run_id / "run_metadata.json").read_text())
-    assert meta["inputs"]["logo_path"] == "inputs/logo_logo.png"
-    assert meta["inputs"]["logo_placement"] == "top-right"
+    assert meta["inputs"]["reference_image_path"] == "inputs/reference_image_reference.png"

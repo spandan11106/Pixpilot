@@ -80,8 +80,6 @@ class RunManager:
             "video_path": path_map.get("video"),
             "model_3d_path": path_map.get("model_3d"),
             "reference_image_path": path_map.get("reference_image"),
-            "logo_path": path_map.get("logo"),
-            "logo_placement": payload.get("logo_placement"),
         }
 
         metadata = {

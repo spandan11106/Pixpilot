@@ -78,8 +78,6 @@ export default function Home() {
   const [videoToken, setVideoToken] = useState<string | null>(null);
   const [model3dToken, setModel3dToken] = useState<string | null>(null);
   const [referenceToken, setReferenceToken] = useState<string | null>(null);
-  const [logoToken, setLogoToken] = useState<string | null>(null);
-  const [logoPlacement, setLogoPlacement] = useState("bottom-left");
 
   // Steering
   const [aspectRatio, setAspectRatio] = useState("1:1");
@@ -113,8 +111,6 @@ export default function Home() {
         video_token: videoToken,
         model_3d_token: model3dToken,
         reference_image_token: referenceToken,
-        logo_token: logoToken,
-        logo_placement: logoPlacement,
         steering: {
           aspect_ratio: aspectRatio,
           camera_perspective: cameraPerspective,
@@ -197,22 +193,6 @@ export default function Home() {
                     <FileField label="Product Video (mp4/mov/webm, max 100MB)" fileType="video" accept=".mp4,.mov,.webm" onToken={setVideoToken} />
                     <FileField label="3D Model (gltf/obj/usdz, max 50MB)" fileType="model_3d" accept=".gltf,.obj,.usdz" onToken={setModel3dToken} />
                     <FileField label="Reference Image (jpg/png/webp)" fileType="reference_image" accept=".jpg,.jpeg,.png,.webp" onToken={setReferenceToken} />
-                    <FileField label="Company Logo (svg/png/jpeg)" fileType="logo" accept=".svg,.png,.jpg,.jpeg" onToken={setLogoToken} />
-                    {logoToken && (
-                      <div className="space-y-1">
-                        <Label>Logo Placement</Label>
-                        <Select value={logoPlacement} onValueChange={v => { if (v !== null) setLogoPlacement(v); }}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="top-left">Top Left</SelectItem>
-                            <SelectItem value="top-right">Top Right</SelectItem>
-                            <SelectItem value="bottom-left">Bottom Left (default)</SelectItem>
-                            <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                            <SelectItem value="center-watermark">Center Watermark</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </AccordionContent>
                 </AccordionItem>
 

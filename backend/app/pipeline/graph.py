@@ -2,13 +2,13 @@
 
 Flow:
 
-    start → process_text → process_image → process_video → process_model
-          → finalize → complete
+    start → process_text → process_image → process_reference → process_video
+          → process_model → finalize → complete
 
 The required product image halts the run on failure (routes to END with a
-``pipeline_error`` event). The optional video and 3D model are non-fatal: a
-missing or failed input emits a ``*_skipped`` / ``*_failed`` event and the run
-continues.
+``pipeline_error`` event). The optional reference image, video and 3D model are
+non-fatal: a missing or failed input emits a ``*_skipped`` / ``*_failed`` event
+and the run continues.
 Full base64 payloads are written to ``content/<run_id>/processed/ingestion.json``
 and kept out of both the SSE stream and ``run_metadata.json``.
 """
@@ -98,6 +98,26 @@ def process_image_node(state: PipelineState) -> dict:
     return _emit(state, "image_processed", {"metrics": image_result["metrics"]}, results=results)
 
 
+def process_reference_node(state: PipelineState) -> dict:
+    run_id = state["run_id"]
+    reference_rel = _inputs(run_id).get("reference_image_path")
+    if not reference_rel:
+        return _emit(state, "reference_skipped", {"reason": "no reference image provided"})
+
+    try:
+        reference_result = process_image(_abs_path(run_id, reference_rel))
+    except Exception as e:  # noqa: BLE001 - reference image is optional; failure is non-fatal
+        return _emit(state, "reference_failed", {"error": str(e)})
+
+    results = {**state["results"], "reference_image": reference_result}
+    return _emit(
+        state,
+        "reference_processed",
+        {"metrics": reference_result["metrics"]},
+        results=results,
+    )
+
+
 async def process_video_node(state: PipelineState) -> dict:
     run_id = state["run_id"]
     video_rel = _inputs(run_id).get("video_path")
@@ -156,6 +176,7 @@ def finalize_node(state: PipelineState) -> dict:
         "artifact_path": "processed/ingestion.json",
         "text_fields": list(results.get("text", {})),
         "image_processed": "image" in results,
+        "reference_image_processed": "reference_image" in results,
         "video_frame_count": results.get("video", {}).get("metrics", {}).get("frame_count", 0),
         "model_3d_thumbnail_count": results.get("model_3d", {})
         .get("metrics", {})
@@ -174,7 +195,7 @@ def complete_node(state: PipelineState) -> dict:
 
 
 def _route_after_image(state: PipelineState) -> str:
-    return END if state["failed"] else "process_video"
+    return END if state["failed"] else "process_reference"
 
 
 def build_graph():
@@ -182,6 +203,7 @@ def build_graph():
     builder.add_node("start", start_node)
     builder.add_node("process_text", process_text_node)
     builder.add_node("process_image", process_image_node)
+    builder.add_node("process_reference", process_reference_node)
     builder.add_node("process_video", process_video_node)
     builder.add_node("process_model", process_model_node)
     builder.add_node("finalize", finalize_node)
@@ -191,8 +213,9 @@ def build_graph():
     builder.add_edge("start", "process_text")
     builder.add_edge("process_text", "process_image")
     builder.add_conditional_edges(
-        "process_image", _route_after_image, {"process_video": "process_video", END: END}
+        "process_image", _route_after_image, {"process_reference": "process_reference", END: END}
     )
+    builder.add_edge("process_reference", "process_video")
     builder.add_edge("process_video", "process_model")
     builder.add_edge("process_model", "finalize")
     builder.add_edge("finalize", "complete")

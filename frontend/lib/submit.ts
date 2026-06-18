@@ -21,8 +21,6 @@ export interface SubmitPayload {
   video_token: string | null;
   model_3d_token: string | null;
   reference_image_token: string | null;
-  logo_token: string | null;
-  logo_placement: string;
   steering: SteeringParams;
   pipeline_mode: string;
   ecommerce_image_count: number;
