@@ -1,0 +1,14 @@
+{
+  "supervision_defaults": {
+    "research": true,
+    "image_gen": true,
+    "captions": true
+  },
+  "default_steering": {
+    "aspect_ratio": "1:1",
+    "camera_perspective": "Studio Eye-Level",
+    "lighting_preset": "Studio Softlight",
+    "negative_prompts": ""
+  },
+  "updated_at": "2026-06-17T16:39:37.969736+00:00"
+}
