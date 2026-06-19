@@ -9,8 +9,19 @@ class Settings(BaseSettings):
     # API Keys
     openai_api_key: str = ""
     anthropic_api_key: str = ""
+    google_api_key: str = ""
     fal_api_key: str = ""
     serpapi_api_key: str = ""
+
+    # Vision agent — provider priority and per-provider model names
+    vision_models: str = "openai,anthropic,google"
+    openai_vision_model: str = "gpt-4o"
+    anthropic_vision_model: str = "claude-3-5-sonnet-20241022"
+    google_vision_model: str = "gemini-2.0-flash"
+
+    # Summary agent model configuration
+    summary_model: str = "claude-haiku-4-5-20251001"
+    prompt_model: str = "claude-sonnet-4-6"
 
     # Sidecar URLs
     ffmpeg_sidecar_url: str = "http://ffmpeg:8001"
