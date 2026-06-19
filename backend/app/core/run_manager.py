@@ -20,8 +20,9 @@ _INITIAL_METADATA = {
     "supervision": {},
     "agent_states": {
         "product_profile": None,
-        "market_report": None,
+        "summary_card": None,
         "creative_blueprint": None,
+        "market_report": None,
     },
     "image_iterations": [],
     "approved_image": None,
