@@ -834,38 +834,25 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 ---
 
-### Milestone 1 — Ingestion, Vision Analysis & Summarizer *(Week 3–4)*
+### Milestone 1 — Ingestion, Vision Analysis, Summarizer & Image Prompt *(Week 3–4)*
 
 - [x] Build submission form in Next.js: compulsory fields + optional inputs (video, 3D model, reference image; logo is collected later at the overlay step) + steering params + mode selector + supervision panel.
 - [x] Build FastAPI ingestion endpoint: validates required fields, file types, and size limits.
 - [x] Implement video keyframe extraction via FFmpeg sidecar (1 FPS, max 15 frames).
 - [x] Implement 3D model rendering via Three.js sidecar (4 perspective thumbnails).
 - [x] Process reference style image during ingestion (downscale + base64) for Vision Agent consumption.
-- [ ] Build Vision Agent (GPT-4o Vision): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON.
+- [x] Build Vision Agent (model-flexible: OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet, Google Gemini 2.0): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON with fallback chain and human-in-the-loop checkpoint on failure.
 - [ ] Build Summarizer Agent (Claude Haiku): merges product profile + description fields into Input Summary Card.
+- [ ] Build Image Gen Prompt Agent (Claude Sonnet): generates creative blueprint from product profile + description + research (optional) + steering parameters.
 - [ ] Display Input Summary Card on dashboard.
 - [ ] Write `product_profile` to `run_metadata.json` under `agent_states.product_profile`.
+- [ ] Write `creative_blueprint` to `run_metadata.json` under `agent_states.creative_blueprint`.
 
-**Deliverable:** User uploads product image + description; dashboard displays a structured Input Summary Card with product analysis.
-
----
-
-### Milestone 2 — Market Research Agent *(Week 5–6)*
-
-- [ ] Integrate SerpAPI; implement HTML-to-Markdown scraper and result cleaner.
-- [ ] Set up per-run ephemeral ChromaDB instance.
-- [ ] Build Phase 1: 60-second question checkpoint card with countdown timer on dashboard.
-- [ ] Build Phase 2: SerpAPI search loop; implement Crossroads Checkpoint card (2-option selector) on dashboard.
-- [ ] Implement parallel sub-agents for the selected research path.
-- [ ] Build Phase 3: Research Report Approval card on dashboard.
-- [ ] Merge product profile + market report + user inputs into Creative Blueprint.
-- [ ] Write `market_report` and `creative_blueprint` to `run_metadata.json` under `agent_states`.
-
-**Deliverable:** Full research flow works end-to-end: question input → search → crossroads → report approval → Creative Blueprint produced.
+**Deliverable:** User uploads product image + description; Vision Agent analyzes media with fallback between three models; Summarizer and Image Gen Prompt Agent produce Input Summary Card and Creative Blueprint.
 
 ---
 
-### Milestone 3 — Image Generation with Preview & Revision Loop *(Week 7–8)*
+### Milestone 2 — Image Generation with Preview & Revision Loop *(Week 5–6)*
 
 - [ ] Build Image Designer Agent: constructs FLUX prompt from Creative Blueprint + steering parameters.
 - [ ] Integrate fal.ai FLUX Dev image-to-image endpoint with async polling.
@@ -879,6 +866,21 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 - [ ] Implement per-image revision for Mode 2 (E-Commerce Batch): each image in the batch has its own independent revision loop (max 10 iterations per image); revisions to one image do not affect others.
 
 **Deliverable:** User can generate images in any mode, iterate via natural language, and approve a final output.
+
+---
+
+### Milestone 3 — Market Research Agent (Optional, Deferred) *(Week 7–8)*
+
+- [ ] Integrate SerpAPI; implement HTML-to-Markdown scraper and result cleaner.
+- [ ] Set up per-run ephemeral ChromaDB instance.
+- [ ] Build Phase 1: 60-second question checkpoint card with countdown timer on dashboard.
+- [ ] Build Phase 2: SerpAPI search loop; implement Crossroads Checkpoint card (2-option selector) on dashboard.
+- [ ] Implement parallel sub-agents for the selected research path.
+- [ ] Build Phase 3: Research Report Approval card on dashboard.
+- [ ] Integrate research output into Creative Blueprint generation.
+- [ ] Write `market_report` to `run_metadata.json` under `agent_states`.
+
+**Deliverable:** Optional research flow works end-to-end: question input → search → crossroads → report approval. Can be triggered conditionally in Modes 1 and 3.
 
 ---
 
@@ -912,14 +914,16 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 ```
 Week  1– 2 │ ██████ Milestone 0: Infrastructure
-Week  3– 4 │ ██████ Milestone 1: Ingestion + Vision + Summarizer
-Week  5– 6 │ ██████ Milestone 2: Market Research Agent
-Week  7– 8 │ ██████ Milestone 3: Image Generation + Revision Loop
+Week  3– 4 │ ██████ Milestone 1: Ingestion + Vision + Summarizer + Image Prompt
+Week  5– 6 │ ██████ Milestone 2: Image Generation + Revision Loop
+Week  7– 8 │ ██████ Milestone 3: Market Research Agent (Optional, Deferred)
 Week  9–10 │ ██████ Milestone 4: Final Review Deck
 Week 11–13 │ █████████ Milestone 5: Polish + Testing + GitHub Release
 ```
 
-**Total estimated duration: ~13 weeks (≈ 3 months)**
+**Total estimated duration: ~13 weeks (≈ 3 months)** — Market Research can be added mid-pipeline once core flow is solid.
+
+**Updated data flow:** Input → Processing → Vision Agent → Summary Agent → Image Prompt Agent → Image Generation → (Optional: Market Research) → Final Review
 
 ---
 
