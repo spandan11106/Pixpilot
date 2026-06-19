@@ -177,26 +177,22 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
     model_failed: "3D model",
     reference_failed: "Reference image",
   };
-  const DONE_LABEL: Record<string, string> = {
-    text_processed: "Product copy",
-    image_processed: "Product image",
-    reference_processed: "Reference image",
-    video_processed: "Product video",
-    model_processed: "3D model",
-  };
   const failures = [...new Set(messages.filter((m) => FAIL_LABEL[m.event]).map((m) => FAIL_LABEL[m.event]))];
-  const processedList = [...new Set(messages.filter((m) => DONE_LABEL[m.event]).map((m) => DONE_LABEL[m.event]))];
-  const errored = messages.some((m) => m.event === "pipeline_error");
   const completed = messages.some((m) => m.event === "pipeline_complete");
   const ended = messages.some((m) => m.event === "stream_end");
-  const terminal = errored || completed || ended || optimisticDone;
-  const phase: "processing" | "success" | "partial" | "failed" = !terminal
+  const terminal = completed || ended || optimisticDone;
+  const phase: "processing" | "success" | "failed" = !terminal
     ? "processing"
-    : errored
+    : failures.length > 0
       ? "failed"
-      : failures.length > 0
-        ? "partial"
-        : "success";
+      : "success";
+
+  // Auto-close the modal 5s after the run reaches a terminal state.
+  useEffect(() => {
+    if (!runId || phase === "processing") return;
+    const t = setTimeout(onClose, 5000);
+    return () => clearTimeout(t);
+  }, [runId, phase, onClose]);
 
   return (
    <>
@@ -227,34 +223,18 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
               {phase === "success" && (
                 <div className="gen-result">
                   <div className="res-icon ok"><CheckIcon /></div>
-                  <div className="res-title">Generation ready</div>
-                  <div className="res-sub">All assets were processed successfully.</div>
-                  {processedList.length > 0 && (
-                    <ul className="res-assets">
-                      {processedList.map((l) => (
-                        <li key={l}><CheckIcon className="ck" /> {l}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              {phase === "partial" && (
-                <div className="gen-result">
-                  <div className="res-icon bad"><XIcon strokeWidth={2.4} /></div>
-                  <div className="res-title">Some assets couldn’t be processed</div>
-                  <div className="res-sub">Your generation continued without them.</div>
-                  <ul className="res-assets">
-                    {failures.map((l) => (
-                      <li key={l} className="bad"><XIcon strokeWidth={2.4} /> {l} failed to process</li>
-                    ))}
-                  </ul>
+                  <div className="res-title">Processing done</div>
                 </div>
               )}
               {phase === "failed" && (
                 <div className="gen-result">
                   <div className="res-icon bad"><XIcon strokeWidth={2.4} /></div>
-                  <div className="res-title">Generation couldn’t start</div>
-                  <div className="res-sub">The product image failed to process. Please try a different file.</div>
+                  <div className="res-title">Processing failed</div>
+                  <ul className="res-assets">
+                    {failures.map((l) => (
+                      <li key={l} className="bad"><XIcon strokeWidth={2.4} /> {l}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
