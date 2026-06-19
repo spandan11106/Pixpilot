@@ -2,7 +2,6 @@
 
 import { useId, useRef, useState, type ReactNode } from "react";
 import { uploadFile, processUpload, deleteUpload, type PreviewItem } from "@/lib/upload";
-import { extractKeyframes, type Keyframe } from "./keyframes";
 import { ImageIcon, VideoIcon, CubeIcon, UploadIcon, XIcon } from "./icons";
 
 type PreviewKind = "image" | "frames" | "views";
@@ -49,9 +48,8 @@ export function Dropzone({
   const [stage, setStage] = useState<AssetStatus>("empty");
   const [drag, setDrag] = useState(false);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const [frames, setFrames] = useState<Keyframe[] | null>(null);
-  const [framesLoading, setFramesLoading] = useState(false);
-  const [views, setViews] = useState<PreviewItem[] | null>(null);
+  // Server-side processing results (extracted keyframes / rendered views).
+  const [items, setItems] = useState<PreviewItem[] | null>(null);
   const reactId = useId();
 
   const filled = !!file && !error;
@@ -74,13 +72,6 @@ export function Dropzone({
       const url = URL.createObjectURL(f);
       objUrlRef.current = url;
       setImgUrl(url);
-    } else if (preview === "frames") {
-      setFrames(null);
-      setFramesLoading(true);
-      extractKeyframes(f)
-        .then(setFrames)
-        .catch(() => setFrames([])) // graceful: show "no preview" rather than fake tiles
-        .finally(() => setFramesLoading(false));
     }
   }
 
@@ -90,8 +81,7 @@ export function Dropzone({
       setFile(f);
       setError(`Too large · max ${maxMB}MB`);
       setImgUrl(null);
-      setFrames(null);
-      setViews(null);
+      setItems(null);
       revoke();
       onToken(null);
       setStatus("error");
@@ -99,7 +89,7 @@ export function Dropzone({
     }
     setFile(f);
     setError(null);
-    setViews(null);
+    setItems(null);
     buildPreview(f);
     onToken(null);
     setStatus("uploading");
@@ -124,7 +114,9 @@ export function Dropzone({
         setStatus("error");
         return;
       }
-      if (preview === "views" && result.preview) setViews(result.preview.items);
+      // For frames/views the server is the source of truth — show every frame
+      // it actually extracted (not a fixed-size client-side sample).
+      if (result.preview && result.preview.kind !== "image") setItems(result.preview.items);
       setStatus("ready");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Processing failed");
@@ -144,9 +136,7 @@ export function Dropzone({
     setFile(null);
     setError(null);
     setImgUrl(null);
-    setFrames(null);
-    setFramesLoading(false);
-    setViews(null);
+    setItems(null);
     onToken(null);
     setStatus("empty");
   }
@@ -220,15 +210,15 @@ export function Dropzone({
           {preview === "frames" && (
             <>
               <div className="dz-preview-label">
-                {framesLoading
+                {stage === "processing"
                   ? "Extracting keyframes…"
-                  : frames && frames.length > 0
-                    ? `Keyframes extracted · ${frames.length}`
+                  : items && items.length > 0
+                    ? `Keyframes extracted · ${items.length}`
                     : "Preview unavailable"}
               </div>
-              {!framesLoading && frames && frames.length > 0 && (
+              {items && items.length > 0 && (
                 <div className="dz-strip">
-                  {frames.map((f, i) => (
+                  {items.map((f, i) => (
                     <button type="button" key={i} className="dz-frame dz-zoom" onClick={() => onZoom?.(f.url)}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={f.url} alt={f.label} />
@@ -245,13 +235,13 @@ export function Dropzone({
               <div className="dz-preview-label">
                 {stage === "processing"
                   ? "Rendering views…"
-                  : views && views.length > 0
-                    ? `Generated views · ${views.length}`
+                  : items && items.length > 0
+                    ? `Generated views · ${items.length}`
                     : "Preview unavailable"}
               </div>
-              {views && views.length > 0 && (
+              {items && items.length > 0 && (
                 <div className="dz-strip">
-                  {views.map((v, i) => (
+                  {items.map((v, i) => (
                     <button type="button" key={i} className="dz-frame dz-zoom" onClick={() => onZoom?.(v.url)}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={v.url} alt={v.label} />
