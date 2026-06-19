@@ -14,6 +14,7 @@ and kept out of both the SSE stream and ``run_metadata.json``.
 """
 
 import json
+import logging
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
@@ -23,12 +24,16 @@ from typing_extensions import TypedDict
 
 from app.core.run_manager import run_manager
 from app.core.settings import settings
+from app.pipeline.agents.summary_agent import generate_image_prompt, generate_summary_card
+from app.pipeline.agents.vision_orchestrator import get_orchestrator
 from app.pipeline.processors import (
     process_image,
     process_model,
     process_text,
     process_video,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineState(TypedDict):
@@ -218,6 +223,118 @@ def finalize_node(state: PipelineState) -> dict:
     return _emit(state, "ingestion_complete", summary)
 
 
+async def vision_analysis_node(state: PipelineState) -> dict:
+    """Analyze processed media and produce product profile."""
+    run_id = state["run_id"]
+    results = state["results"]
+
+    # Extract base64 payloads from ingestion results
+    product_image = results.get("image", {}).get("image_payload")
+    reference_image = results.get("reference_image", {}).get("image_payload")
+
+    # Extract image payloads from video frames
+    video_frames = []
+    if "video" in results:
+        frames = results["video"].get("frames", [])
+        video_frames = [frame.get("image_payload") for frame in frames if "image_payload" in frame]
+
+    # Extract image payloads from 3D model thumbnails
+    model_thumbnails = []
+    if "model_3d" in results:
+        thumbnails = results["model_3d"].get("thumbnails", [])
+        model_thumbnails = [thumb.get("image_payload") for thumb in thumbnails if "image_payload" in thumb]
+
+    # Try vision analysis with fallback
+    if not product_image:
+        logger.warning(f"Run {run_id}: No product image available for vision analysis")
+        return _emit(
+            state,
+            "vision_analysis_skipped",
+            {"reason": "No product image processed"},
+        )
+
+    product_profile = await get_orchestrator().analyze(
+        product_image, reference_image, video_frames or None, model_thumbnails or None
+    )
+
+    if product_profile is None:
+        return _emit(
+            state,
+            "vision_analysis_failed",
+            {
+                "reason": "All vision providers failed",
+                "action_required": "User must choose to skip or retry",
+            },
+        )
+
+    # Store in run_metadata.json
+    run_manager.update_metadata(
+        run_id, {"agent_states": {"product_profile": product_profile}}
+    )
+    logger.info(f"Run {run_id}: Vision analysis complete using {product_profile['provider_used']}")
+
+    results = {**state["results"], "product_profile": product_profile}
+    return _emit(
+        state,
+        "vision_analyzed",
+        {
+            "provider": product_profile["provider_used"],
+            "completeness": product_profile["analysis_completeness"],
+        },
+        results=results,
+    )
+
+
+async def summary_agent_node(state: PipelineState) -> dict:
+    """Call 1: Input Summary Card. Call 2: structured Image Gen Prompt."""
+    run_id = state["run_id"]
+    results = state["results"]
+    text_results = results.get("text", {})
+    product_profile = results.get("product_profile")
+    steering = run_manager.get_metadata(run_id).get("steering", {})
+
+    # ── Call 1: Summary Card ──────────────────────────────────────────────────
+    try:
+        summary_card = await generate_summary_card(text_results, product_profile)
+    except Exception as e:
+        logger.error(f"Run {run_id}: Summary card generation failed: {e}")
+        return _emit(state, "summary_failed", {"error": str(e)})
+
+    run_manager.update_metadata(run_id, {"agent_states": {"summary_card": summary_card}})
+    logger.info(f"Run {run_id}: Summary card generated (vision_available={summary_card.get('vision_available')})")
+
+    # ── Call 2: Image Generation Prompt ──────────────────────────────────────
+    try:
+        creative_blueprint = await generate_image_prompt(summary_card, steering)
+    except Exception as e:
+        logger.warning(f"Run {run_id}: Image prompt generation failed: {e}")
+        run_manager.update_metadata(run_id, {"agent_states": {"summary_card": summary_card}})
+        results = {**results, "summary_card": summary_card}
+        return _emit(
+            state,
+            "image_prompt_failed",
+            {"error": str(e)},
+            results=results,
+        )
+
+    run_manager.update_metadata(
+        run_id,
+        {"agent_states": {"summary_card": summary_card, "creative_blueprint": creative_blueprint}},
+    )
+    logger.info(f"Run {run_id}: Image generation prompt ready")
+
+    results = {**results, "summary_card": summary_card, "creative_blueprint": creative_blueprint}
+    return _emit(
+        state,
+        "summary_complete",
+        {
+            "vision_available": summary_card.get("vision_available", False),
+            "product_name": summary_card.get("product_name"),
+        },
+        results=results,
+    )
+
+
 def complete_node(state: PipelineState) -> dict:
     return _emit(
         state,
@@ -239,6 +356,8 @@ def build_graph():
     builder.add_node("process_video", process_video_node)
     builder.add_node("process_model", process_model_node)
     builder.add_node("finalize", finalize_node)
+    builder.add_node("vision_analysis", vision_analysis_node)
+    builder.add_node("summary_agent", summary_agent_node)
     builder.add_node("complete", complete_node)
 
     builder.set_entry_point("start")
@@ -250,7 +369,9 @@ def build_graph():
     builder.add_edge("process_reference", "process_video")
     builder.add_edge("process_video", "process_model")
     builder.add_edge("process_model", "finalize")
-    builder.add_edge("finalize", "complete")
+    builder.add_edge("finalize", "vision_analysis")
+    builder.add_edge("vision_analysis", "summary_agent")
+    builder.add_edge("summary_agent", "complete")
     builder.add_edge("complete", END)
     return builder.compile()
 
