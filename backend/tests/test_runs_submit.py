@@ -141,6 +141,26 @@ def test_submit_rejects_seasonal_mode_without_theme(client: TestClient, stage_fi
     assert response.status_code == 422
 
 
+def test_submit_carries_processed_cache_into_run(
+    client: TestClient, stage_file, tmp_content_dir: Path
+):
+    import json
+
+    token = stage_file("product.jpg")
+    # Simulate an upload that was already processed on upload.
+    cache = {"status": "success", "file_type": "product_image", "result": {"status": "success"}}
+    (tmp_content_dir / "uploads" / token / "processed.json").write_text(json.dumps(cache))
+
+    response = client.post("/api/runs/submit", json=_valid_body(token))
+    run_id = response.json()["run_id"]
+
+    moved = tmp_content_dir / run_id / "processed" / "cache" / "product_image.json"
+    assert moved.exists()
+    assert json.loads(moved.read_text())["status"] == "success"
+    # The cache should have been moved out of the uploads dir.
+    assert not (tmp_content_dir / "uploads" / token / "processed.json").exists()
+
+
 def test_submit_with_optional_reference_image_token(
     client: TestClient, stage_file, tmp_content_dir: Path
 ):

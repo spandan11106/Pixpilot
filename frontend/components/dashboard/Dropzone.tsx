@@ -1,21 +1,14 @@
 "use client";
 
 import { useId, useRef, useState, type ReactNode } from "react";
-import { uploadFile } from "@/lib/upload";
+import { uploadFile, processUpload, deleteUpload, type PreviewItem } from "@/lib/upload";
 import { extractKeyframes, type Keyframe } from "./keyframes";
 import { ImageIcon, VideoIcon, CubeIcon, UploadIcon, XIcon } from "./icons";
 
 type PreviewKind = "image" | "frames" | "views";
 
-const grads = [
-  "linear-gradient(135deg,#303ED2,#1B27B4)",
-  "linear-gradient(135deg,#EEC04A,#FFAF38)",
-  "linear-gradient(135deg,#1B27B4,#303ED2 60%,#EEC04A)",
-  "linear-gradient(135deg,#FFAF38,#303ED2)",
-  "linear-gradient(135deg,#303ED2,#EEC04A)",
-  "linear-gradient(135deg,#B026D3,#303ED2)",
-];
-const VIEWS = ["Front", "3/4 View", "Side", "Back"];
+// Lifecycle of an asset, surfaced to the parent so it can gate submission.
+export type AssetStatus = "empty" | "uploading" | "processing" | "ready" | "error";
 
 const fileIcon: Record<"image" | "video" | "cube", ReactNode> = {
   image: <ImageIcon strokeWidth={1.8} />,
@@ -40,24 +33,33 @@ export type DropzoneProps = {
   required?: boolean;
   promptIcon?: ReactNode;
   onToken: (token: string | null) => void;
+  onStatus?: (status: AssetStatus) => void;
   onZoom?: (src: string) => void;
 };
 
 export function Dropzone({
-  fileType, accept, title, sub, preview, icon, maxMB, required, promptIcon, onToken, onZoom,
+  fileType, accept, title, sub, preview, icon, maxMB, required, promptIcon,
+  onToken, onStatus, onZoom,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const objUrlRef = useRef<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<AssetStatus>("empty");
   const [drag, setDrag] = useState(false);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [frames, setFrames] = useState<Keyframe[] | null>(null);
   const [framesLoading, setFramesLoading] = useState(false);
+  const [views, setViews] = useState<PreviewItem[] | null>(null);
   const reactId = useId();
 
   const filled = !!file && !error;
+
+  function setStatus(s: AssetStatus) {
+    setStage(s);
+    onStatus?.(s);
+  }
 
   function revoke() {
     if (objUrlRef.current) {
@@ -89,39 +91,75 @@ export function Dropzone({
       setError(`Too large · max ${maxMB}MB`);
       setImgUrl(null);
       setFrames(null);
+      setViews(null);
       revoke();
       onToken(null);
+      setStatus("error");
       return;
     }
     setFile(f);
     setError(null);
+    setViews(null);
     buildPreview(f);
-    setUploading(true);
     onToken(null);
+    setStatus("uploading");
+    let token: string;
     try {
-      const token = await uploadFile(f, fileType);
-      onToken(token);
+      token = await uploadFile(f, fileType);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
       onToken(null);
-    } finally {
-      setUploading(false);
+      setStatus("error");
+      return;
+    }
+    // Upload succeeded — keep the token even if processing later fails, so the
+    // run can retry the asset server-side.
+    tokenRef.current = token;
+    onToken(token);
+    setStatus("processing");
+    try {
+      const result = await processUpload(token, fileType);
+      if (result.status === "error") {
+        setError(result.error || "Processing failed");
+        setStatus("error");
+        return;
+      }
+      if (preview === "views" && result.preview) setViews(result.preview.items);
+      setStatus("ready");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Processing failed");
+      setStatus("error");
     }
   }
 
   function clearFile(e: React.MouseEvent) {
     e.stopPropagation();
     if (inputRef.current) inputRef.current.value = "";
+    if (tokenRef.current) {
+      // Drop the token (never submitted) and delete its staged file + cache.
+      deleteUpload(tokenRef.current);
+      tokenRef.current = null;
+    }
     revoke();
     setFile(null);
     setError(null);
     setImgUrl(null);
     setFrames(null);
     setFramesLoading(false);
+    setViews(null);
     onToken(null);
+    setStatus("empty");
   }
 
-  const meta = error ?? (uploading ? "uploading…" : file ? fmtSize(file.size) : "");
+  const meta =
+    error ??
+    (stage === "uploading"
+      ? "uploading…"
+      : stage === "processing"
+        ? "processing…"
+        : file
+          ? fmtSize(file.size)
+          : "");
 
   return (
     <div
@@ -165,7 +203,7 @@ export function Dropzone({
         </div>
       )}
 
-      {filled && !uploading && (
+      {filled && stage !== "uploading" && (
         <div className="dz-preview" onClick={(e) => e.stopPropagation()}>
           {preview === "image" && imgUrl && (
             <>
@@ -204,14 +242,24 @@ export function Dropzone({
 
           {preview === "views" && (
             <>
-              <div className="dz-preview-label">Generated views · {VIEWS.length}</div>
-              <div className="dz-strip">
-                {VIEWS.map((l, i) => (
-                  <div key={l} className="dz-frame" style={{ background: grads[i % grads.length] }}>
-                    <span className="flabel">{l}</span>
-                  </div>
-                ))}
+              <div className="dz-preview-label">
+                {stage === "processing"
+                  ? "Rendering views…"
+                  : views && views.length > 0
+                    ? `Generated views · ${views.length}`
+                    : "Preview unavailable"}
               </div>
+              {views && views.length > 0 && (
+                <div className="dz-strip">
+                  {views.map((v, i) => (
+                    <button type="button" key={i} className="dz-frame dz-zoom" onClick={() => onZoom?.(v.url)}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={v.url} alt={v.label} />
+                      <span className="flabel">{v.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>

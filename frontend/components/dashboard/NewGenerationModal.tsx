@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSSE } from "@/lib/sse";
 import { submitRun, type SubmitPayload } from "@/lib/submit";
-import { Dropzone } from "./Dropzone";
+import { Dropzone, type AssetStatus } from "./Dropzone";
 import { Lightbox } from "./Lightbox";
 import { ImageIcon, VideoIcon, CubeIcon, XIcon, CheckIcon, PlusIcon } from "./icons";
 
@@ -77,11 +77,19 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
   const [supervisionResearch, setSupervisionResearch] = useState(true);
   const [supervisionImageGen, setSupervisionImageGen] = useState(true);
 
+  // Per-asset processing status (drives submit-time gating & the result screen)
+  const [assetStatuses, setAssetStatuses] = useState<Record<string, AssetStatus>>({});
+  const setAssetStatus = (key: string) => (s: AssetStatus) =>
+    setAssetStatuses((prev) => ({ ...prev, [key]: s }));
+
   // Submission / streaming
   const [runId, setRunId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { messages, connected } = useSSE(runId);
+  // When every submitted asset was already processed on upload, the run reuses
+  // those results and finishes instantly — skip dwelling on a processing screen.
+  const [optimisticDone, setOptimisticDone] = useState(false);
+  const { messages } = useSSE(runId);
 
   // Enlarged preview (lightbox)
   const [zoom, setZoom] = useState<string | null>(null);
@@ -111,6 +119,17 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
     if (!productImageToken || !canSubmit) return;
     setSubmitting(true);
     setSubmitError(null);
+    // If all submitted assets are already processed, the run will reuse the
+    // cached results and complete near-instantly — show success right away.
+    const submitted: [string, string | null][] = [
+      ["product_image", productImageToken],
+      ["video", videoToken],
+      ["model_3d", model3dToken],
+      ["reference_image", referenceToken],
+    ];
+    setOptimisticDone(
+      submitted.every(([key, token]) => !token || assetStatuses[key] === "ready"),
+    );
     try {
       const payload: SubmitPayload = {
         generation_name: generationName.trim(),
@@ -151,6 +170,34 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
         ? "Ready to generate"
         : "Product image + all required fields needed";
 
+  // Translate the raw SSE stream into a friendly result — never shown as logs.
+  const FAIL_LABEL: Record<string, string> = {
+    pipeline_error: "Product image",
+    video_failed: "Product video",
+    model_failed: "3D model",
+    reference_failed: "Reference image",
+  };
+  const DONE_LABEL: Record<string, string> = {
+    text_processed: "Product copy",
+    image_processed: "Product image",
+    reference_processed: "Reference image",
+    video_processed: "Product video",
+    model_processed: "3D model",
+  };
+  const failures = [...new Set(messages.filter((m) => FAIL_LABEL[m.event]).map((m) => FAIL_LABEL[m.event]))];
+  const processedList = [...new Set(messages.filter((m) => DONE_LABEL[m.event]).map((m) => DONE_LABEL[m.event]))];
+  const errored = messages.some((m) => m.event === "pipeline_error");
+  const completed = messages.some((m) => m.event === "pipeline_complete");
+  const ended = messages.some((m) => m.event === "stream_end");
+  const terminal = errored || completed || ended || optimisticDone;
+  const phase: "processing" | "success" | "partial" | "failed" = !terminal
+    ? "processing"
+    : errored
+      ? "failed"
+      : failures.length > 0
+        ? "partial"
+        : "success";
+
   return (
    <>
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -160,7 +207,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
             <h2 className="heading-2" id="genTitle">{runId ? (generationName || "New Generation") : "New Generation"}</h2>
             <p>
               {runId
-                ? "Pipeline started — streaming events below."
+                ? "Your generation is on its way through the pipeline."
                 : "Give Pixpilot a product and creative direction — it renders a batch through the full pipeline."}
             </p>
           </div>
@@ -170,19 +217,51 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
         {runId ? (
           <>
             <div className="modal-body">
-              <div className="caption" style={{ fontFamily: "var(--font-mono, monospace)" }}>{runId}</div>
-              <div className="events">
-                {messages.length === 0 && <span className="event-data">Waiting for events…</span>}
-                {messages.map((m, i) => (
-                  <div className="event-row" key={i}>
-                    <span className="event-name">[{m.event}]</span>
-                    <span className="event-data">{JSON.stringify(m.data)}</span>
-                  </div>
-                ))}
-              </div>
+              {phase === "processing" && (
+                <div className="gen-result">
+                  <div className="spinner" />
+                  <div className="res-title">Processing…</div>
+                  <div className="res-sub">Pixpilot is preparing your generation. This only takes a moment.</div>
+                </div>
+              )}
+              {phase === "success" && (
+                <div className="gen-result">
+                  <div className="res-icon ok"><CheckIcon /></div>
+                  <div className="res-title">Generation ready</div>
+                  <div className="res-sub">All assets were processed successfully.</div>
+                  {processedList.length > 0 && (
+                    <ul className="res-assets">
+                      {processedList.map((l) => (
+                        <li key={l}><CheckIcon className="ck" /> {l}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {phase === "partial" && (
+                <div className="gen-result">
+                  <div className="res-icon bad"><XIcon strokeWidth={2.4} /></div>
+                  <div className="res-title">Some assets couldn’t be processed</div>
+                  <div className="res-sub">Your generation continued without them.</div>
+                  <ul className="res-assets">
+                    {failures.map((l) => (
+                      <li key={l} className="bad"><XIcon strokeWidth={2.4} /> {l} failed to process</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {phase === "failed" && (
+                <div className="gen-result">
+                  <div className="res-icon bad"><XIcon strokeWidth={2.4} /></div>
+                  <div className="res-title">Generation couldn’t start</div>
+                  <div className="res-sub">The product image failed to process. Please try a different file.</div>
+                </div>
+              )}
             </div>
             <div className="modal-foot">
-              <span className="gen-hint">{connected ? "Connected" : "Stream ended"}</span>
+              <span className="gen-hint">
+                {phase === "processing" ? "Working…" : phase === "success" ? "Done" : "Finished with issues"}
+              </span>
               <button type="button" className="btn btn-cta" onClick={onClose}>Done</button>
             </div>
           </>
@@ -215,6 +294,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                     icon="image"
                     required
                     onToken={setProductImageToken}
+                    onStatus={setAssetStatus("product_image")}
                     onZoom={setZoom}
                   />
                 </div>
@@ -246,17 +326,20 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                   <div className="field">
                     <span className="field-label">Product Video</span>
                     <Dropzone fileType="video" accept=".mp4,.mov,.webm" title="Product Video" sub="MP4 · MOV · WEBM · ≤100MB"
-                      preview="frames" icon="video" maxMB={100} promptIcon={<VideoIcon />} onToken={setVideoToken} onZoom={setZoom} />
+                      preview="frames" icon="video" maxMB={100} promptIcon={<VideoIcon />} onToken={setVideoToken}
+                      onStatus={setAssetStatus("video")} onZoom={setZoom} />
                   </div>
                   <div className="field">
                     <span className="field-label">3D Model</span>
                     <Dropzone fileType="model_3d" accept=".gltf,.obj,.usdz" title="3D Model" sub="GLTF · OBJ · USDZ · ≤50MB"
-                      preview="views" icon="cube" maxMB={50} promptIcon={<CubeIcon />} onToken={setModel3dToken} />
+                      preview="views" icon="cube" maxMB={50} promptIcon={<CubeIcon />} onToken={setModel3dToken}
+                      onStatus={setAssetStatus("model_3d")} onZoom={setZoom} />
                   </div>
                   <div className="field">
                     <span className="field-label">Reference Image</span>
                     <Dropzone fileType="reference_image" accept=".jpg,.jpeg,.png,.webp" title="Reference Image" sub="JPG · PNG · WEBP"
-                      preview="image" icon="image" promptIcon={<ImageIcon strokeWidth={1.8} />} onToken={setReferenceToken} onZoom={setZoom} />
+                      preview="image" icon="image" promptIcon={<ImageIcon strokeWidth={1.8} />} onToken={setReferenceToken}
+                      onStatus={setAssetStatus("reference_image")} onZoom={setZoom} />
                   </div>
                 </div>
               </section>
@@ -378,7 +461,7 @@ export function NewGenerationModal({ onClose }: { onClose: () => void }) {
                 <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
                 <button type="button" className={`btn btn-cta ${!canSubmit || submitting ? "is-disabled" : ""}`}
                   disabled={!canSubmit || submitting} onClick={handleSubmit}>
-                  <PlusIcon /> Create Generation
+                  {submitting ? <><span className="btn-spin" /> Processing…</> : <><PlusIcon /> Create Generation</>}
                 </button>
               </div>
             </div>

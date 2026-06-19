@@ -51,6 +51,26 @@ def _abs_path(run_id: str, rel_path: str) -> Any:
     return run_manager.get_content_dir() / run_id / rel_path
 
 
+def _cached_result(run_id: str, key: str) -> dict | None:
+    """Return a successful upload-time processing result, if one was cached.
+
+    Assets processed at upload time leave their result in
+    ``processed/cache/<key>.json``; reusing it lets the pipeline skip the sidecar
+    work. Only successful caches are reused — a missing or errored cache means the
+    node processes the input fresh.
+    """
+    cache_path = run_manager.get_content_dir() / run_id / "processed" / "cache" / f"{key}.json"
+    if not cache_path.exists():
+        return None
+    try:
+        cached = json.loads(cache_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    if cached.get("status") != "success":
+        return None
+    return cached.get("result")
+
+
 def start_node(state: PipelineState) -> dict:
     return _emit(state, "pipeline_started", {"run_id": state["run_id"]})
 
@@ -84,8 +104,9 @@ def process_image_node(state: PipelineState) -> dict:
             {"stage": "image", "error": "No product image found for this run."},
             failed=True,
         )
+    cached = _cached_result(run_id, "product_image")
     try:
-        image_result = process_image(_abs_path(run_id, image_rel))
+        image_result = cached or process_image(_abs_path(run_id, image_rel))
     except Exception as e:  # noqa: BLE001 - any failure of the required image halts the run
         run_manager.update_metadata(run_id, {"status": "failed"})
         return _emit(
@@ -95,7 +116,12 @@ def process_image_node(state: PipelineState) -> dict:
             failed=True,
         )
     results = {**state["results"], "image": image_result}
-    return _emit(state, "image_processed", {"metrics": image_result["metrics"]}, results=results)
+    return _emit(
+        state,
+        "image_processed",
+        {"metrics": image_result["metrics"], "cached": cached is not None},
+        results=results,
+    )
 
 
 def process_reference_node(state: PipelineState) -> dict:
@@ -104,8 +130,9 @@ def process_reference_node(state: PipelineState) -> dict:
     if not reference_rel:
         return _emit(state, "reference_skipped", {"reason": "no reference image provided"})
 
+    cached = _cached_result(run_id, "reference_image")
     try:
-        reference_result = process_image(_abs_path(run_id, reference_rel))
+        reference_result = cached or process_image(_abs_path(run_id, reference_rel))
     except Exception as e:  # noqa: BLE001 - reference image is optional; failure is non-fatal
         return _emit(state, "reference_failed", {"error": str(e)})
 
@@ -113,7 +140,7 @@ def process_reference_node(state: PipelineState) -> dict:
     return _emit(
         state,
         "reference_processed",
-        {"metrics": reference_result["metrics"]},
+        {"metrics": reference_result["metrics"], "cached": cached is not None},
         results=results,
     )
 
@@ -124,8 +151,9 @@ async def process_video_node(state: PipelineState) -> dict:
     if not video_rel:
         return _emit(state, "video_skipped", {"reason": "no video provided"})
 
+    cached = _cached_result(run_id, "video")
     try:
-        video_result = await process_video(
+        video_result = cached or await process_video(
             _abs_path(run_id, video_rel), settings.ffmpeg_sidecar_url
         )
     except Exception as e:  # noqa: BLE001 - video is optional; failure is non-fatal
@@ -135,7 +163,7 @@ async def process_video_node(state: PipelineState) -> dict:
     return _emit(
         state,
         "video_processed",
-        {"frame_count": video_result["metrics"]["frame_count"]},
+        {"frame_count": video_result["metrics"]["frame_count"], "cached": cached is not None},
         results=results,
     )
 
@@ -146,8 +174,9 @@ async def process_model_node(state: PipelineState) -> dict:
     if not model_rel:
         return _emit(state, "model_skipped", {"reason": "no 3D model provided"})
 
+    cached = _cached_result(run_id, "model_3d")
     try:
-        model_result = await process_model(
+        model_result = cached or await process_model(
             _abs_path(run_id, model_rel), settings.renderer_sidecar_url
         )
     except Exception as e:  # noqa: BLE001 - 3D model is optional; failure is non-fatal
@@ -157,7 +186,10 @@ async def process_model_node(state: PipelineState) -> dict:
     return _emit(
         state,
         "model_processed",
-        {"thumbnail_count": model_result["metrics"]["thumbnail_count"]},
+        {
+            "thumbnail_count": model_result["metrics"]["thumbnail_count"],
+            "cached": cached is not None,
+        },
         results=results,
     )
 

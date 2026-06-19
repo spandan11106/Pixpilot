@@ -198,6 +198,70 @@ async def test_pipeline_reference_failure_is_non_fatal(tmp_content_dir: Path, mo
     assert meta["ingestion"]["reference_image_processed"] is False
 
 
+async def test_pipeline_reuses_cached_model(tmp_content_dir: Path, monkeypatch):
+    """A successful upload-time cache is reused; the sidecar is never called."""
+    run_id = _make_run(tmp_content_dir, with_model=True)
+    cache_dir = tmp_content_dir / run_id / "processed" / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "model_3d.json").write_text(
+        json.dumps(
+            {
+                "status": "success",
+                "file_type": "model_3d",
+                "result": {
+                    "status": "success",
+                    "filename": "chair.glb",
+                    "metrics": {"thumbnail_count": 4},
+                    "thumbnails": [
+                        {"metrics": {}, "image_payload": "data:image/jpeg;base64,AAAA"}
+                        for _ in range(4)
+                    ],
+                },
+            }
+        )
+    )
+
+    async def boom(path, sidecar_url, **kw):
+        raise AssertionError("renderer sidecar should not be called when cached")
+
+    monkeypatch.setattr(graph, "process_model", boom)
+
+    events = await _collect(run_id)
+    model_evt = next(e for e in events if e["event"] == "model_processed")
+    assert model_evt["data"]["cached"] is True
+    assert model_evt["data"]["thumbnail_count"] == 4
+    meta = run_manager.get_metadata(run_id)
+    assert meta["ingestion"]["model_3d_thumbnail_count"] == 4
+
+
+async def test_pipeline_ignores_errored_cache(tmp_content_dir: Path, monkeypatch):
+    """An errored cache is not reused — the node processes the input fresh."""
+    run_id = _make_run(tmp_content_dir, with_model=True)
+    cache_dir = tmp_content_dir / run_id / "processed" / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "model_3d.json").write_text(
+        json.dumps({"status": "error", "file_type": "model_3d", "error": "sidecar down"})
+    )
+
+    called = {"n": 0}
+
+    async def fake_process_model(path, sidecar_url, **kw):
+        called["n"] += 1
+        Path(path).unlink(missing_ok=True)
+        return {
+            "status": "success",
+            "filename": Path(path).name,
+            "metrics": {"thumbnail_count": 4},
+            "thumbnails": [{"metrics": {}, "image_payload": "data:image/jpeg;base64,AAAA"}],
+        }
+
+    monkeypatch.setattr(graph, "process_model", fake_process_model)
+    events = await _collect(run_id)
+    assert called["n"] == 1  # reprocessed fresh
+    model_evt = next(e for e in events if e["event"] == "model_processed")
+    assert model_evt["data"]["cached"] is False
+
+
 async def test_pipeline_halts_when_image_missing(tmp_content_dir: Path):
     run_id = _make_run(tmp_content_dir, with_image=False)
     events = await _collect(run_id)

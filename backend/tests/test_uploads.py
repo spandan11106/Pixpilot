@@ -1,6 +1,13 @@
 import io
 
 from fastapi.testclient import TestClient
+from PIL import Image
+
+
+def _png_bytes(size=(64, 64), color=(120, 90, 200)) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, color).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def test_upload_product_image_returns_token(client: TestClient):
@@ -100,3 +107,64 @@ def test_upload_invalid_file_type_param(client: TestClient):
         files={"file": ("x.jpg", data, "image/jpeg")},
     )
     assert response.status_code == 422
+
+
+def test_process_image_returns_preview_and_caches(client: TestClient, tmp_content_dir):
+    token = client.post(
+        "/api/uploads?file_type=product_image",
+        files={"file": ("product.png", io.BytesIO(_png_bytes()), "image/png")},
+    ).json()["upload_token"]
+
+    response = client.post(f"/api/uploads/{token}/process?file_type=product_image")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["preview"]["kind"] == "image"
+    assert body["preview"]["items"][0]["url"].startswith("data:image/jpeg;base64,")
+
+    cache = tmp_content_dir / "uploads" / token / "processed.json"
+    assert cache.exists()
+    assert '"status": "success"' in cache.read_text()
+
+
+def test_process_corrupt_image_returns_error_no_cache(client: TestClient, tmp_content_dir):
+    # Valid extension but garbage bytes — process_image raises, surfaced as error.
+    token = client.post(
+        "/api/uploads?file_type=product_image",
+        files={"file": ("broken.png", io.BytesIO(b"not a real png"), "image/png")},
+    ).json()["upload_token"]
+
+    response = client.post(f"/api/uploads/{token}/process?file_type=product_image")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "error"
+    assert body["error"]
+    # No success cache written → the run will process it fresh.
+    assert not (tmp_content_dir / "uploads" / token / "processed.json").exists()
+
+
+def test_process_unknown_token_404(client: TestClient):
+    import uuid
+
+    response = client.post(f"/api/uploads/{uuid.uuid4()}/process?file_type=product_image")
+    assert response.status_code == 404
+
+
+def test_delete_upload_removes_dir(client: TestClient, tmp_content_dir):
+    token = client.post(
+        "/api/uploads?file_type=product_image",
+        files={"file": ("product.png", io.BytesIO(_png_bytes()), "image/png")},
+    ).json()["upload_token"]
+    token_dir = tmp_content_dir / "uploads" / token
+    assert token_dir.exists()
+
+    response = client.delete(f"/api/uploads/{token}")
+    assert response.status_code == 204
+    assert not token_dir.exists()
+
+
+def test_delete_unknown_token_404(client: TestClient):
+    import uuid
+
+    response = client.delete(f"/api/uploads/{uuid.uuid4()}")
+    assert response.status_code == 404

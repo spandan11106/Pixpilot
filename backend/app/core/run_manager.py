@@ -65,11 +65,18 @@ class RunManager:
         inputs_dir = self._run_dir(run_id) / "inputs"
         inputs_dir.mkdir(parents=True, exist_ok=True)
 
-        # Move staged files into inputs/
+        # Move staged files into inputs/. If an upload was already processed at
+        # upload time, carry its cached result into processed/cache/<field>.json
+        # so the pipeline can reuse it instead of re-invoking the sidecars.
+        cache_dir = self._run_dir(run_id) / "processed" / "cache"
         path_map: dict[str, str | None] = {}
         for field, src in file_map.items():
             dest_name = f"{field}_{src.name}"
             dest = inputs_dir / dest_name
+            cached = src.parent / "processed.json"
+            if cached.exists():
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(cached), cache_dir / f"{field}.json")
             shutil.move(str(src), dest)
             path_map[field] = f"inputs/{dest_name}"
 

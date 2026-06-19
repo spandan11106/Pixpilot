@@ -400,11 +400,19 @@
 .pp-dash .gen-hint { font-size: 13px; color: var(--muted-fg); }
 .pp-dash .gen-hint.error { color: var(--destructive); }
 
-/* post-submit event stream inside the modal */
-.pp-dash .events { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-4); max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); font-family: var(--font-mono, monospace); font-size: 13px; }
-.pp-dash .event-row { display: flex; gap: var(--space-3); }
-.pp-dash .event-name { color: var(--primary); font-weight: 600; flex: none; }
-.pp-dash .event-data { color: var(--muted-fg); word-break: break-all; }
+/* post-submit result screen inside the modal — no raw logs */
+@keyframes pp-spin { to { transform: rotate(360deg); } }
+.pp-dash .gen-result { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-3); padding: var(--space-7) var(--space-4); min-height: 220px; }
+.pp-dash .spinner { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: pp-spin 0.8s linear infinite; }
+.pp-dash .res-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+.pp-dash .res-icon.ok { background: #16A34A; }
+.pp-dash .res-icon.bad { background: var(--destructive); }
+.pp-dash .res-title { font-weight: 700; font-size: 18px; color: var(--secondary); }
+.pp-dash .res-sub { font-size: 13px; color: var(--muted-fg); max-width: 460px; }
+.pp-dash .res-assets { list-style: none; padding: 0; margin: var(--space-2) 0 0; display: flex; flex-direction: column; gap: var(--space-2); font-size: 13px; }
+.pp-dash .res-assets li { display: flex; align-items: center; gap: var(--space-2); color: var(--fg); }
+.pp-dash .res-assets li.bad { color: var(--destructive); }
+.pp-dash .btn-spin { width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(27,39,180,0.35); border-top-color: var(--secondary); animation: pp-spin 0.8s linear infinite; }
 
 @media (max-width: 1100px) {
   .pp-dash .cols { grid-template-columns: 1fr; }

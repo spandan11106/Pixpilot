@@ -87,7 +87,11 @@ def _resolve_token(token: str | None, label: str) -> Path | None:
             status_code=422,
             detail=f"Invalid token for {label}: '{token}' not found.",
         )
-    files = list(token_dir.iterdir())
+    # Ignore the cached processing result and any extracted bundle dir — the raw
+    # upload is the only other file in the token dir.
+    files = [
+        p for p in token_dir.iterdir() if p.is_file() and p.name != "processed.json"
+    ]
     if not files:
         raise HTTPException(
             status_code=422,
