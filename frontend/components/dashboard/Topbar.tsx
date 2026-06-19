@@ -1,5 +1,6 @@
 import { SearchIcon, BellIcon, DownloadIcon } from "./icons";
 import { NewGeneration } from "./NewGeneration";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Topbar() {
   return (
@@ -9,6 +10,7 @@ export function Topbar() {
         <input type="text" placeholder="Search prompts, jobs, models…" />
       </div>
       <div className="topbar-actions">
+        <ThemeToggle />
         <button className="icon-btn" aria-label="Notifications">
           <BellIcon />
           <span className="dot" />

@@ -26,8 +26,18 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
+        {/* Set the dashboard theme before paint to avoid a flash. Stored as
+            `pixpilot-theme`; falls back to the OS preference. Scoped to the
+            dashboard via `[data-theme] .pp-dash` rules. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('pixpilot-theme');if(!t){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){}})();",
+          }}
+        />
         {/* Fonts for the Pixpilot dashboard (Roboto + Clash Grotesk). */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
