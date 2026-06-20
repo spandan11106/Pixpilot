@@ -1,6 +1,5 @@
 import {
-  GridIcon, ActivityIcon, ImageIcon, MessageIcon, ModelIcon,
-  ChartIcon, SettingsIcon, BoltIcon,
+  GridIcon, ImageIcon, ModelIcon, BoltIcon,
 } from "./icons";
 
 export function Sidebar() {
@@ -14,17 +13,9 @@ export function Sidebar() {
       </div>
 
       <nav className="nav-group">
-        <a className="nav-item active" href="#"><GridIcon /> Overview</a>
-        <a className="nav-item" href="#"><ActivityIcon /> Pipeline <span className="count">3</span></a>
+        <a className="nav-item active" href="#"><GridIcon /> Workflow</a>
         <a className="nav-item" href="#"><ImageIcon /> Generations</a>
-        <a className="nav-item" href="#"><MessageIcon /> Prompts</a>
         <a className="nav-item" href="#"><ModelIcon /> Models</a>
-      </nav>
-
-      <nav className="nav-group">
-        <div className="nav-heading overline">Workspace</div>
-        <a className="nav-item" href="#"><ChartIcon /> Analytics</a>
-        <a className="nav-item" href="#"><SettingsIcon /> Settings</a>
       </nav>
 
       <div className="sidebar-foot">
