@@ -1,35 +1,34 @@
-# Product Requirements Document — Version 1.0
-# Open-Source Multi-Mode Product Image & Copy Generation Pipeline
+# Product Requirements Document — Version 0.5 (Beta)
+# Open-Source Product Image Generation Pipeline
 
-> **Version:** 1.0
-> **Date:** June 17, 2026
-> **Status:** Draft — Awaiting Review
+> **Version:** 0.5 Beta
+> **Date:** June 20, 2026
+> **Status:** Beta Release — Image Generation Only
+> **Scope:** Multimodal ingestion, vision analysis, and image generation with revision loops. Market research agent deferred to v1.0
 >
 > **PROGRESS SUMMARY (as of June 20, 2026):**
 > - **Milestone 0 (Infrastructure):** ✅ COMPLETE
-> - **Milestone 1 (Ingestion + Vision + Summary):** ✅ MOSTLY COMPLETE (backend wired; frontend display of summary card missing)
-> - **Milestone 2 (Image Generation + Revision):** ⏳ NOT STARTED
-> - **Milestone 3 (Market Research):** ⏳ NOT STARTED
-> - **Milestone 4 (Final Review Deck):** ⏳ NOT STARTED
-> - **Milestone 5 (Polish + Release):** ⏳ NOT STARTED
+> - **Milestone 1 (Ingestion + Vision + Summarizer):** ✅ MOSTLY COMPLETE (backend wired; frontend missing Input Summary Card display and image generation interface)
+> - **Milestone 2 (Image Generation + Revision):** ⏳ IN PROGRESS (critical path for v0.5 beta)
+> - **Milestone 3 (Final Review Deck + Beta Release):** ⏳ NOT STARTED
+> - **v1.0 Future:** Market Research Agent, Copy Generation, and Social Publishing deferred
 >
-> **Changelog from v0.5:**
-> - Project is fully open-source and self-hosted only. No SaaS deployment, no billing infrastructure, no cloud hosting from the maintainer's side in v1.
-> - Social media posting, analytics harvesting, and closed-loop prompt optimization are removed from v1 scope entirely. These are deferred to a future version.
-> - Distribution Agent (Ayrshare), Pre-Post Review screen, Analytics Edge Functions, and Evaluator Agent removed from v1.
-> - n8n removed from architecture — pipeline runs as a single FastAPI + LangGraph backend.
-> - LangGraph is the sole orchestration layer; CrewAI is removed to eliminate framework overlap.
-> - Added Reference Image input for style inference.
-> - Added additional optional steering inputs: aspect ratio, negative prompts, camera perspective, lighting/vibe preset.
-> - Modes revised: Summarization & Research Opt-In, E-Commerce Batch, Social Media Marketing, A/B Concept Exploration, Seasonal Campaign.
-> - Revenue model, Ayrshare/Zernio references, deployment_logs, and analytics_history tables removed.
+> **Changes from v1.0 (Full Roadmap) to v0.5 Beta:**
+> - **v0.5 is a minimal beta release** focusing exclusively on image generation pipeline.
+> - **Modes reduced from 5 to 3:** Removed "Summarization & Research Opt-In" and "Social Media Marketing" modes (both require market research agent deferred to v1.0). Keeping: E-Commerce Batch, A/B Concept Exploration, Seasonal Campaign.
+> - **Market Research Agent deferred to v1.0.** No web search, no crossroads checkpoints, no 60-second question window in v0.5.
+> - **Copy/Caption generation removed from v0.5.** Users export images and write copy manually. Deferred to v1.0.
+> - **Summarizer Agent included in v0.5:** Merges product profile with user description fields to create Input Summary Card checkpoint for user review before image generation.
+> - **SerpAPI and ChromaDB removed from tech stack.** These are deferred with the Market Research Agent to v1.0.
+> - **Supervision simplified:** Summary Review checkpoint (user verifies inputs) + Image Generation checkpoint (user approves/revises/restarts). Market Research checkpoint removed.
+> - **Focus:** Core image generation with revision loops, 3 flexible modes, summary verification, and local export. Get it working well before adding research complexity.
 
 ---
 
 ## Table of Contents
 
-1. [What v1 Is](#what-v1-is)
-2. [What v1 Is Not](#what-v1-is-not)
+1. [What v0.5 Beta Is](#what-v05-beta-is)
+2. [What v0.5 Beta Is Not](#what-v05-beta-is-not)
 3. [Problem Statement](#problem-statement)
 4. [Product Vision](#product-vision)
 5. [Who This Is For](#who-this-is-for)
@@ -51,33 +50,34 @@
 
 ---
 
-## What v1 Is
+## What v0.5 Beta Is
 
-Version 1 is a **self-hosted, open-source, multi-mode asset generation pipeline** that a developer or brand owner can clone from GitHub, configure with their own API keys, and run locally or on their own server. There is no managed cloud and no SaaS offering from the maintainer in v1.
+Version 0.5 is a **self-hosted, open-source, image generation pipeline** that a developer or brand owner can clone from GitHub, configure with their own API keys, and run locally or on their own server. This is a minimal beta release focused exclusively on image generation. There is no managed cloud and no SaaS offering from the maintainer in v0.5.
 
 A user submits a product image and a structured description — optionally supplemented by a video, 3D model, reference style image, and visual steering parameters. (The company logo is supplied later, at the post-generation overlay step, not at submission.) The system:
 
-1. **Ingests and analyzes the product** — parses all inputs and uses a Vision Agent + Summarizer Agent to produce a structured product profile.
-2. **Researches the market interactively (optional)** — searches the web in real-time, asks the user clarifying questions with a 1-minute timeout, and presents crossroads decisions for the user to steer the research direction.
-3. **Generates image assets in one of five modes** — the selected mode governs how many images are generated, what artistic direction is used, and whether market research runs.
-4. **Applies logo overlays programmatically** — after generation, the user optionally uploads an SVG or image logo and picks a placement corner; the system composites it onto the generated output.
-5. **Refines interactively** — shows the generated image; a refinement loop lets users request changes that an agent translates into revised generation prompts.
-6. **Exports assets locally** — saves the approved image assets to disk, ready for manual use.
+1. **Ingests and analyzes the product** — parses all inputs and uses a Vision Agent to produce a structured product profile.
+2. **Generates image assets in one of three modes** — the selected mode governs how many images are generated and what artistic direction is used (E-Commerce Batch for catalog shots, A/B Concept Exploration for creative directions, or Seasonal Campaign for holiday-themed images).
+3. **Applies logo overlays programmatically** — after generation, the user optionally uploads an SVG or image logo and picks a placement corner; the system composites it onto the generated output.
+4. **Refines interactively** — shows the generated image; a refinement loop lets users request changes that an agent translates into revised generation prompts.
+5. **Exports assets locally** — saves the approved images to disk, ready for manual use.
 
 ---
 
-## What v1 Is Not
+## What v0.5 Beta Is Not
 
-| Out of Scope | Reason |
+| Out of Scope for v0.5 Beta | Reason |
 |---|---|
-| Social media posting / publishing | Removed from v1 entirely. Users export assets and post manually. |
-| Post analytics harvesting | Depends on posting; deferred with it. |
-| Closed-loop prompt optimization on live posts | Depends on analytics; deferred with it. |
-| Managed cloud / SaaS hosting | v1 is self-hosted only. Users bring their own API keys and infrastructure. |
-| Billing / subscription management | No revenue infrastructure in v1. |
-| Video reel / short-form video production | Adds TTS, compositing, and codec complexity; deferred to a future version. |
+| Market research agent | Web search, trend analysis, and crossroads checkpoints deferred to v1.0. |
+| Social media posting / publishing | Users export assets and post manually. |
+| Copy generation (captions & hashtags) | Deferred to v1.0. |
+| Post analytics harvesting | Deferred to future versions. |
+| Closed-loop prompt optimization on live posts | Deferred to future versions. |
+| Managed cloud / SaaS hosting | v0.5 is self-hosted only. Users bring their own API keys and infrastructure. |
+| Billing / subscription management | No revenue infrastructure in beta. |
+| Video reel / short-form video production | Deferred to future versions. |
 | Mobile app | Web dashboard only. |
-| Multi-tenant user management | v1 is single-operator per deployment. |
+| Multi-tenant user management | v0.5 is single-operator per deployment. |
 
 ---
 
@@ -97,17 +97,17 @@ This open-source pipeline puts a coordinated team of AI agents directly on any d
 
 ## Product Vision
 
-> An open-source, local-first web workspace where a merchant clones a GitHub repo, adds their API keys, uploads a product photo and description, picks a mode (like E-Commerce or Social Media), and watches an AI agent team summarize their inputs, optionally query live web trends, ask clarifying questions, and render high-quality, brand-consistent image assets — all of which can be refined in natural language and exported instantly.
+> An open-source, local-first web workspace where a merchant clones a GitHub repo, adds their API keys, uploads a product photo and description, picks an image generation mode (E-Commerce Batch, A/B Concept Exploration, or Seasonal Campaign), and watches the system analyze their inputs and render high-quality, brand-consistent image assets that can be refined in natural language and exported instantly. Market research and copy generation are deferred to v1.0.
 
 ---
 
 ## Who This Is For
 
-| User Type | Pain Point v1 Solves |
+| User Type | Pain Point v0.5 Solves |
 |---|---|
-| **Open-source developers & hackers** | Want a self-hosted, customizable creative AI pipeline they can deploy on their own servers and modify freely. |
+| **Open-source developers & hackers** | Want a self-hosted, customizable image generation pipeline they can deploy on their own servers and modify freely. |
 | **E-commerce brand owners** | Need standard multi-angle product catalog shots without agency fees. |
-| **Digital marketing agencies** | Want a white-label asset creation engine they can run locally to draft assets for clients at scale. |
+| **Digital marketing agencies** | Want a local image asset creation engine they can run to draft product photos for clients at scale. |
 | **Privacy-conscious brands** | Require all product images, descriptions, and logos to remain within their own infrastructure. |
 
 ---
@@ -117,7 +117,7 @@ This open-source pipeline puts a coordinated team of AI agents directly on any d
 Users interact with this project in three steps:
 
 1. **Clone the repository** from GitHub.
-2. **Add their own API keys** to a `.env` file (OpenAI, Anthropic, fal.ai, SerpAPI).
+2. **Add their own API keys** to a `.env` file (OpenAI, Anthropic, fal.ai).
 3. **Start the stack** with a single `docker compose up` command, then open the dashboard in their browser.
 
 The maintainer provides:
@@ -125,7 +125,7 @@ The maintainer provides:
 - A `docker-compose.yml` for local setup.
 - A setup guide and API key configuration documentation.
 
-The maintainer does **not** provide: any hosted service, managed API keys, or SaaS access in v1.
+The maintainer does **not** provide: any hosted service, managed API keys, or SaaS access in v0.5.
 
 ---
 
@@ -136,7 +136,7 @@ User opens dashboard (localhost)
         │
         ▼
 [SUPERVISION SETTINGS — one-time or per-run]
-  Select which pipeline stages to review vs. auto-proceed
+  Select image generation supervision (manual approval vs. auto-proceed)
         │
         ▼
 Upload product media + inputs
@@ -150,7 +150,7 @@ Upload product media + inputs
         │
         ▼
 Select Pipeline Mode
-  (E-Commerce Batch / Social Media / A/B Concept / Seasonal / Summarize & Opt-In)
+  (E-Commerce Batch / A/B Concept Exploration / Seasonal Campaign)
         │
         ▼
 Click "Run"
@@ -161,26 +161,15 @@ Click "Run"
   Summarizer Agent produces Input Summary Card → shown to user
         │
         ▼
-  [CHECKPOINT A — Mode 1 / Mode 3 only, if supervision ON]
+  [CHECKPOINT A — if supervision ON]
   User reviews Input Summary Card
-  Prompted: "Run Market Research Agent? [Yes] [Skip to image generation]"
-        │
-        ├── If YES (or Mode 3 with research ON):
-        │     ▼
-        │   [Market Research Agent — F-3]
-        │   Phase 1: 60-second user question window
-        │   Phase 2: Web search → Crossroads checkpoint (if applicable)
-        │   Phase 3: Final research report approval
-        │
-        └── If NO / Mode 2 / Mode 4 / Mode 5:
-              Skips directly to image generation
         │
         ▼
-  [Image Generation Agent — F-4]
+  [Image Generation Agent]
   Generates image(s) based on mode; user can then upload a logo + pick a corner to overlay
         │
         ▼
-  [CHECKPOINT B — if supervision ON]
+  [CHECKPOINT — if supervision ON]
   Generated image(s) shown to user
   User can: Approve / Request changes (revision loop, max 10 iterations) / Full restart
         │
@@ -222,6 +211,8 @@ Click "Run"
 | **Reference Image** | JPEG, PNG, WEBP | Processed during ingestion (downscaled + Base64-encoded), then analyzed by the Vision Agent to extract visual rules: lighting style, composition, depth of field, background type, and overall aesthetic. These rules are injected into the image generation prompt. |
 
 > **Note:** The **company logo is not a submission-time input.** It is uploaded later, at the post-generation Logo Overlay step (see F-4), where the user also selects its placement corner. The logo is never sent to the vision model or the image generator — this saves tokens and avoids the distortion the generative model introduces when a logo is baked into the prompt.
+
+> **v0.5 Note:** Market research is not included in this beta release. Research queries, trend analysis, and brand voice discovery are deferred to v1.0.
 
 ---
 
@@ -308,31 +299,37 @@ The Summarizer Agent (Claude Haiku) then merges this profile with the user's des
 
 ---
 
-### F-2 · Pipeline Modes
+### F-2 · Summarizer Agent
 
-The user selects one mode at submission time. The mode governs the execution path, image quantity, research involvement, and artistic prompt templates.
+The Summarizer Agent (Claude Haiku) merges the product profile from the Vision Agent with the user's description fields into a human-readable **Input Summary Card**. This card is displayed on the dashboard so the user can review and verify that the system correctly understood their product before proceeding to image generation.
+
+**Output schema:**
+
+```json
+{
+  "product_category": "cosmetic bottle",
+  "dominant_colors": ["#F5E6D3", "#C8A882"],
+  "materials_textures": ["amber glass", "matte black plastic cap"],
+  "usps": ["organic cold-pressed oil", "dropper bottle"],
+  "target_audience": "Women aged 28–45 interested in natural skincare",
+  "requested_colors": "soft pastel pinks, warm cream, matte gold",
+  "inferred_style_from_reference": "warm minimalism with golden hour lighting"
+}
+```
 
 ---
 
-#### Mode 1: Summarization & Research Opt-In
+### F-3 · Pipeline Modes
 
-**When to use:** The user wants to review what the system has understood about their product before committing to a generation path.
-
-**Workflow:** Ingestion → Vision Analysis + Summarizer → **User Pause** → (Optional) Market Research → Image Generation → Export.
-
-**Details:**
-- After ingestion and vision analysis, the pipeline pauses and displays the Input Summary Card.
-- The user is prompted: *"We've summarized your product. Would you like to run the Market Research Agent before generating? [Run Research] [Skip to Image Generation]"*
-- If the user selects **Run Research**, F-3 is invoked. Otherwise the pipeline goes straight to F-4.
-- Image quantity: 1 image (social-grade quality).
+The user selects one mode at submission time. The mode governs the execution path, image quantity, and artistic prompt templates. **v0.5 Beta includes only three modes; market-research-dependent modes are deferred to v1.0.**
 
 ---
 
-#### Mode 2: E-Commerce Batch Mode
+#### Mode 1: E-Commerce Batch Mode
 
-**When to use:** The user needs a set of clean, catalog-grade product images for Amazon, Shopify, or similar platforms. Speed and volume matter over trend research.
+**When to use:** The user needs a set of clean, catalog-grade product images for Amazon, Shopify, or similar platforms. Speed and volume matter.
 
-**Workflow:** Ingestion → Vision Analysis → Image Generation → Export.
+**Workflow:** Ingestion → Vision Analysis + Summarizer → Summary Review (if supervision ON) → Image Generation → Export.
 
 **Details:**
 - Market Research Agent is **bypassed entirely** — no SerpAPI cost, faster execution.
@@ -343,23 +340,11 @@ The user selects one mode at submission time. The mode governs the execution pat
 
 ---
 
-#### Mode 3: Social Media Marketing Mode
-
-**When to use:** The user wants a single, highly polished marketing image optimized for social feed engagement.
-
-**Workflow:** Ingestion → Vision Analysis → (Optional) Market Research → Image Generation → Export.
-
-**Details:**
-- Generates exactly **1 image** optimized for high-engagement social feeds (Instagram, LinkedIn, X, TikTok, Facebook).
-- Market research is optional (user toggles at submission). When enabled, the research output directly conditions the image prompt.
-
----
-
-#### Mode 4: A/B Concept Exploration Mode
+#### Mode 2: A/B Concept Exploration Mode
 
 **When to use:** The user is early in brand positioning and wants to explore visually distinct directions before committing to a style.
 
-**Workflow:** Ingestion → Vision Analysis → Image Generation → Export.
+**Workflow:** Ingestion → Vision Analysis + Summarizer → Summary Review (if supervision ON) → Image Generation → Export.
 
 **Details:**
 - Market Research is bypassed — this mode is intentionally divergent rather than trend-anchored.
@@ -373,11 +358,11 @@ The user selects one mode at submission time. The mode governs the execution pat
 
 ---
 
-#### Mode 5: Seasonal / Holiday Campaign Mode
+#### Mode 3: Seasonal / Holiday Campaign Mode
 
 **When to use:** The user wants images for a specific holiday or seasonal moment.
 
-**Workflow:** Ingestion → Vision Analysis → Image Generation → Export.
+**Workflow:** Ingestion → Vision Analysis + Summarizer → Summary Review (if supervision ON) → Image Generation → Export.
 
 **Details:**
 - The user selects a seasonal theme from a dropdown: `Christmas`, `Halloween`, `Summer`, `Spring`, `Diwali`, `Black Friday`, `Valentine's Day`, `Eid`, `Hanukkah`, `New Year`.
@@ -386,88 +371,15 @@ The user selects one mode at submission time. The mode governs the execution pat
 
 ---
 
-### F-3 · Interactive AI Market Research Agent
-
-Active in **Mode 1** (if opted-in) and **Mode 3** (if opted-in). Operates in three interactive phases.
-
-#### Phase 1 — User Question Checkpoint (60-second timeout)
-
-Before initiating any web searches, the agent pauses and prompts the user:
-
-```
-Market Research is about to begin.
-Do you have specific questions, competitor brands, or trends you want me to investigate?
-
-[Text input box]                          (Auto-proceeding in 60s…)
-```
-
-- A visible countdown timer runs on the dashboard.
-- If the user provides input (e.g., "Check how Aesop markets their oils", "Is dark academia aesthetic trending in beauty?"), this context is appended to the agent's search queries.
-- If the timer reaches 0 with no input, the agent proceeds automatically using the product profile as the default query basis.
-
-#### Phase 2 — Web Search & Crossroads Checkpoint
-
-- The agent performs real-time web searches via SerpAPI. Results are scraped, cleaned, and stored in a per-run ephemeral ChromaDB vector index.
-- If the research surfaces two meaningfully distinct strategic directions, the agent **pauses and asks the user to choose**:
-
-```
-I found two distinct angles for this campaign. Which should I prioritize?
-
-  ○ Option A: Sustainable & eco-conscious focus
-    (Natural materials, earthy tones, clean beauty positioning)
-
-  ○ Option B: High-performance & results-driven focus
-    (Clinical imagery, before/after framing, ingredient science)
-
-[Select]
-```
-
-- The pipeline holds until the user selects. Parallel sub-agents then deep-dive only on the chosen path.
-- If no meaningful fork exists, Phase 2 completes without interrupting the user.
-
-#### Phase 3 — Research Report Approval
-
-Before the Creative Blueprint is sent to the Image Agent, the Research Agent presents its findings:
-
-```
-Research complete. Here is the proposed visual and copy direction:
-
-- Trend: Soft naturalism with warm, earthy tones
-- Recommended Scene: Product on slate stone with linen backdrop and dried botanicals
-- Top Hooks: "Designed by nature, built for your skin"
-- Caption Tone: Conversational, premium, eco-conscious
-
-[Approve & Generate Image]   [Request Changes]
-```
-
-- If changes are requested, the user types free-text direction and the agent revises its report.
-- On approval, the Creative Blueprint is finalized and passed to F-4.
-
-**Research Agent Output Schema:**
-
-```json
-{
-  "trending_aesthetic": "soft naturalism with warm tones",
-  "top_hooks": ["designed by nature, built for your skin", "the organic shift you've been waiting for"],
-  "recommended_keywords": ["#organicliving", "#cleanbeauty", "#minimalhome"],
-  "caption_tone": "conversational, premium, eco-conscious",
-  "visual_direction": "product resting on slate stone with soft side shadows and linen backdrop",
-  "selected_option": "Option A: Sustainable & eco-conscious focus",
-  "user_questions_injected": "Check how Aesop markets their oils"
-}
-```
-
----
-
 ### F-4 · AI Image Generation with Preview & Revision Loop
 
-The Image Agent takes the Creative Blueprint (or raw product profile if research was skipped), combines it with the user's visual steering parameters, and generates images via FLUX Dev on fal.ai.
+The Image Agent combines the product profile with the user's visual steering parameters and generates images via FLUX Dev on fal.ai.
 
 **Generation details:**
 - **Model**: FLUX Dev via `fal-ai/flux/dev/image-to-image`. The user's product image is used as the base image (image-to-image pipeline), preserving the actual product contours, labels, and geometry.
 - **Reference Image style integration**: Style tokens extracted by the Vision Agent from the reference image (lighting, background type, composition) are injected directly into the prompt.
 - **Steering parameters**: Aspect ratio, camera perspective, lighting preset, and negative prompts are all appended to the FLUX payload.
-- **Quantities**: Governed by the selected mode (see F-2).
+- **Quantities**: Governed by the selected mode (see F-3).
 
 **Logo compositing:**
 - The logo is collected **at this post-generation step**, not at submission. After the FLUX image is generated, the user optionally uploads a logo (SVG, PNG, or JPEG) and selects its placement corner: `Top-Left`, `Top-Right`, `Bottom-Left` (default), `Bottom-Right`, or `Center Watermark`.
@@ -505,7 +417,7 @@ What would you like to change?
 
 ### F-5 · Final Review Deck & Asset Export
 
-After image generation and revision are complete, the dashboard displays the **Final Review Deck** — always shown regardless of supervision settings.
+After all revisions are approved, the dashboard displays the **Final Review Deck** — always shown regardless of supervision settings.
 
 **The deck shows:**
 - All generated images (full resolution), labeled by mode/concept.
@@ -515,7 +427,7 @@ After image generation and revision are complete, the dashboard displays the **F
 - Download any or all images to their local machine (saved to `content/<run_id>/`).
 - Start a new run.
 
-There is no posting, scheduling, or external API call in v1. All exports are local.
+There is no posting, scheduling, or external API call in v0.5. All exports are local.
 
 ---
 
@@ -527,16 +439,13 @@ The dashboard is a Next.js 14 (App Router) web application served locally.
 - Compulsory: Product Image drag-and-drop zone + 3-part description (Product Info, Target Audience, Desired Colors).
 - Optional Media: Video upload, 3D Model upload, Reference Image upload. (Logo upload + corner placement is collected later, at the post-generation Image Revision Canvas / Logo Overlay step — not on this form.)
 - Steering Parameters: Aspect Ratio selector, Camera Perspective dropdown, Lighting/Vibe Preset dropdown, Negative Prompts text area.
-- Mode Selector: Dropdown for the 5 pipeline modes.
+- Mode Selector: Dropdown for the 3 pipeline modes (E-Commerce Batch, A/B Concept Exploration, Seasonal Campaign).
 - Supervision settings panel.
 
 **Live Agent Workspace:**
 - Real-time agent execution status tracker (via Server-Sent Events from FastAPI).
 - Inline interactive checkpoint cards:
-  - **Input Summary Card**: Summarizer's structured overview of the ingested inputs.
-  - **Research Question Checkpoint**: 60-second countdown timer card with text input.
-  - **Crossroads Checkpoint**: Two-option selection card.
-  - **Research Approval Card**: Full research report with approve/revise controls.
+  - **Input Summary Card**: Summarizer's structured overview of the ingested inputs (shown if supervision ON).
   - **Image Revision Canvas**: Generated image(s) with revision chat input, approve, and restart buttons; also offers an optional logo upload + corner placement selector that triggers the post-generation Logo Overlay.
   - **Final Review Deck**: All approved images with per-image download buttons.
 
@@ -544,11 +453,11 @@ The dashboard is a Next.js 14 (App Router) web application served locally.
 
 ## Supervision & Control Settings
 
-The user can configure how much human review happens at each pipeline stage. This allows fully automated batch generation or precise, hand-guided creative refinement.
+The user can configure how much human review happens at each checkpoint. This allows fully automated batch generation or precise, hand-guided creative refinement.
 
 | Stage | Supervision ON (Default) | Supervision OFF (Autonomous) |
 |---|---|---|
-| **Market Research** | Pauses at 60s question window, Crossroads selection, and final report approval. | Skips user questions (uses product profile defaults); auto-selects the highest-confidence research path; auto-approves the report. |
+| **Summary Review** | Pauses to show Input Summary Card; user reviews before proceeding to image generation. | Auto-proceeds past summary and goes directly to image generation. |
 | **Image Generation** | Shows image(s) with logo overlay; user can approve, revise, or restart. | Auto-approves the first generated image(s) and proceeds. |
 | **Final Review Deck** | **Always shown.** User downloads images. | **Always shown.** User downloads images. |
 
@@ -563,11 +472,9 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
 | Component | Technology | Rationale |
 |---|---|---|
 | Pipeline Orchestrator | **LangGraph (Python)** | Stateful cyclic graph with first-class human-in-the-loop pause support. Single framework — no CrewAI overlap. |
-| Coordinator / Routing LLM | **OpenAI GPT-4o** | Central brain for state routing, checkpoint decisions, and prompt construction. |
 | Vision Agent LLM | **GPT-4o Vision** | Multimodal analysis of product image, reference image, 3D renders, and video frames. |
-| Summarizer / Research LLMs | **Anthropic Claude Haiku** | Fast, low-cost, high-quality structured text generation for summarization and research reports. |
+| Summarizer Agent LLM | **Claude Haiku** | Fast, low-cost summarization of product profile + description fields into user-readable summary card. |
 | Prompt Refinement LLM | **Claude Sonnet** | Translates natural language user feedback into precise, revised image generation prompts. |
-| Web Search | **SerpAPI** | Real-time SERP access for the Market Research Agent. |
 
 ### Media / Generation Layer
 
@@ -585,7 +492,6 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
 | Run Storage | **Local filesystem (`content/`)** | Each pipeline run writes inputs, outputs, and metadata to its own subfolder. Zero external dependencies. |
 | Run Metadata | **`run_metadata.json` (per run)** | Lightweight JSON file inside each run folder recording run config, agent states, iteration history, and output paths. Queryable without a DB. |
 | Workspace Settings | **`workspace_settings.json` (local)** | Flat JSON file for supervision defaults and steering presets. Written once; updated in-place. |
-| Ephemeral RAG Store | **ChromaDB (local SQLite-backed)** | Per-run local vector index for web-scraped research data. Destroyed after run. |
 
 ### Backend / Infrastructure
 
@@ -612,13 +518,13 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
 │                  ASSET CREATION DASHBOARD  (Next.js 14)                  │
 │  · Submission Form: Image + Description + Optional Inputs                │
 │  · Visual Steering: Aspect Ratio | Camera | Vibe | Negative Prompts      │
-│  · Mode Selector: Opt-In | E-Commerce | Social | A/B | Seasonal          │
+│  · Mode Selector: E-Commerce | A/B | Seasonal                            │
 │  · Live Agent Workspace: SSE-driven status + inline checkpoint cards     │
 └──────────────────────────────────────────────────────────────────────────┘
                                      │  multipart/form-data
                                      ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                    FastAPI BACKEND  (Python 3.11)                         │
+│                    FastAPI BACKEND  (Python 3.11)                        │
 │  · Input validation (required fields, file types, size limits)           │
 │  · File storage → /uploads directory                                     │
 │  · SSE endpoint for real-time agent status streaming to dashboard        │
@@ -633,43 +539,44 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
            │  frames[]                             │  thumbnails[]
            └────────────────┬──────────────────────┘
                             ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│               LANGGRAPH PIPELINE COORDINATOR  (stateful graph)           │
-│  · Manages routing between agents based on selected mode                 │
-│  · Holds pipeline state (product_profile, market_report, blueprint)      │
-│  · Executes human-in-the-loop pause nodes at checkpoints                │
-│  · Streams checkpoint events to FastAPI SSE endpoint                     │
-└──────┬──────────────────────┬──────────────────────┬─────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│               LANGGRAPH PIPELINE COORDINATOR  (stateful graph)            │
+│  · Manages routing between agents based on selected mode                  │
+│  · Holds pipeline state (product_profile, summary_card)                   │
+│  · Executes human-in-the-loop pause nodes at summary and image checkpoints│
+│  · Streams checkpoint events to FastAPI SSE endpoint                      │
+└──────┬──────────────────────┬──────────────────────┬──────────────────────┘
        │                      │                      │
-       ▼                      ▼                      ▼
-┌─────────────┐   ┌────────────────────┐   ┌─────────────────────┐
-│ VISION AGENT│   │  SUMMARIZER AGENT  │   │ MARKET RESEARCH     │
-│ GPT-4o Vision│  │  Claude Haiku      │   │ AGENT               │
-│ · Product   │   │  · Merges all      │   │ · Phase 1: 60s Q    │
-│   image     │   │    inputs to       │   │   wait              │
-│ · Reference │   │    Input Summary   │   │ · SerpAPI searches  │
-│   style     │   │    Card JSON       │   │ · ChromaDB RAG      │
-│ · 3D renders│   └────────┬───────────┘   │ · Crossroads CP     │
-│ · Video     │            │               │ · Report approval   │
-│   frames    │            ▼               └──────────┬──────────┘
-└──────┬──────┘   [CHECKPOINT A]                      │
-       │          User reviews summary;               │ Creative Blueprint
-       │          opts in/out of research             │
-       │                                              │
-       └──────────────────┬───────────────────────────┘
-                          │  Product Profile + (optional) Creative Blueprint
-                          ▼
+       ▼                      ▼
+┌──────────────┐   ┌────────────────────┐
+│ VISION AGENT │   │ SUMMARIZER AGENT   │
+│ GPT-4o Vision│   │ Claude Haiku       │
+│ · Product    │   │ · Merges vision    │
+│   image      │   │   output + user    │
+│ · Reference  │   │   description →    │
+│   style      │   │   Input Summary    │
+│ · 3D renders │   │   Card JSON        │
+│ · Video      │   └────────┬───────────┘
+│   frames     │            │
+└──────┬───────┘            ▼
+       │            [CHECKPOINT A]
+       │            User reviews Input Summary Card
+       │            (if supervision ON)
+       │                    │
+       └────────┬───────────┘
+                │  Product Profile + User Description
+                ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                         IMAGE DESIGNER AGENT                              │
-│  · Constructs FLUX prompt from Blueprint + steering params               │
+│                    IMAGE DESIGNER AGENT                                  │
+│  · Constructs FLUX prompt from product profile + steering params         │
 │  · Calls fal.ai FLUX Dev image-to-image endpoint (async polling)         │
-│  · Applies content moderation gate; retries up to 2x on flagged output  │
+│  · Applies content moderation gate; retries up to 2x on flagged output   │
 └──────────────────────────────────────────────────────────────────────────┘
                                      │  generated image binary
                                      ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                         LOGO COMPOSITING NODE  (Sharp)                   │
-│  · User optionally uploads a logo + picks a corner at this step           │
+│                    LOGO COMPOSITING NODE  (Sharp)                        │
+│  · User optionally uploads a logo + picks a corner at this step          │
 │  · Programmatically overlays logo at user-specified corner               │
 │  · Respects margin + opacity config                                      │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -677,13 +584,11 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
                                      ▼
                           [CHECKPOINT B]
                   User previews image; approves or requests revision
-                          │
-                          ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                  REFINEMENT AGENT  (Claude Sonnet)                       │
 │  · Rewrites generation prompt based on user's natural language feedback  │
 │  · Preserves product-preservation tokens across revisions                │
-│  · Loops back to Image Designer Agent (max 10 iterations)               │
+│  · Loops back to Image Designer Agent (max 10 iterations)                │
 └──────────────────────────────────────────────────────────────────────────┘
                                      │  approved image
                                      ▼
@@ -697,11 +602,11 @@ Supervision preferences are saved to a local `workspace_settings.json` file and 
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                  LOCAL FILESYSTEM  (content/ directory)                  │
 │  content/                                                                │
-│  └── <run_id>/                  ← one folder per pipeline run           │
-│      ├── inputs/                ← product image, video, model, reference│
-│      ├── v1.png … vN.png        ← image iterations (approved = latest)  │
-│      └── run_metadata.json      ← full run record (see schema below)    │
-│  workspace_settings.json        ← supervision & steering defaults       │
+│  └── <run_id>/                  ← one folder per pipeline run            │
+│      ├── inputs/                ← product image, video, model, reference │
+│      ├── v1.png … vN.png        ← image iterations (approved = latest)   │
+│      └── run_metadata.json      ← full run record (see schema below)     │
+│  workspace_settings.json        ← supervision & steering defaults        │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -742,7 +647,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
   "completed_at": "2026-06-17T10:29:45Z",
   "status": "completed",
 
-  "pipeline_mode": "social",
+  "pipeline_mode": "ecommerce",
   "seasonal_theme": null,
 
   "inputs": {
@@ -764,14 +669,13 @@ Written progressively as the pipeline executes. Each agent node appends or updat
   },
 
   "supervision": {
-    "research": true,
+    "summary_review": true,
     "image_gen": true
   },
 
   "agent_states": {
     "product_profile": { },
-    "market_report": null,
-    "creative_blueprint": { }
+    "summary_card": { }
   },
 
   "image_iterations": [
@@ -808,7 +712,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 ```json
 {
   "supervision_defaults": {
-    "research": true,
+    "summary_review": true,
     "image_gen": true
   },
   "default_steering": {
@@ -817,7 +721,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
     "lighting_preset": "Studio Softlight",
     "negative_prompts": ""
   },
-  "updated_at": "2026-06-17T09:00:00Z"
+  "updated_at": "2026-06-20T09:00:00Z"
 }
 ```
 
@@ -835,9 +739,9 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 **Frontend Submission**
 - Complete submission form with all required and optional fields
-- Mode selector (all 5 modes: E-Commerce, Social, A/B, Seasonal, Summarize)
+- Mode selector (3 modes for v0.5: E-Commerce Batch, A/B Concept, Seasonal Campaign)
 - Steering parameter selectors (aspect ratio, camera, lighting preset, negative prompts)
-- Supervision toggles
+- Supervision toggles (summary review, image generation)
 - Media upload with client-side processing caching
 - Basic processing result screen (shows success/failure summary)
 
@@ -857,13 +761,9 @@ All downstream milestones depend on completing the Image Designer Agent, FLUX in
 4. Refinement Agent → rewrites prompts from user feedback
 5. Revision loop implementation → max 10 iterations per image
 
-**Later (Milestone 3)**
-- Market Research Agent (depends on Image Generation being stable)
-- Checkpoint cards for research (60s question, crossroads, approval)
-
-**Finally (Milestone 4 & 5)**
+**Next (Milestone 3)**
 - Final Review Deck and asset export
-- Full E2E testing, polish, GitHub release
+- Full E2E testing across all 3 modes, UI polish, and beta GitHub release
 
 ### Recommended Next Action
 
@@ -898,12 +798,12 @@ All downstream milestones depend on completing the Image Designer Agent, FLUX in
 - [x] Process reference style image during ingestion (downscale + base64) for Vision Agent consumption.
 - [x] Build Vision Agent (model-flexible: OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet, Google Gemini 2.0): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON with fallback chain and human-in-the-loop checkpoint on failure.
 - [x] Build Summarizer Agent (Claude Haiku): merges product profile + description fields into Input Summary Card.
-- [x] Build Image Gen Prompt Agent (Claude Sonnet): generates creative blueprint from product profile + description + research (optional) + steering parameters.
+- [x] Build Image Gen Prompt construction: converts product profile + description + steering parameters directly into FLUX-ready prompts (no separate agent in v0.5; embedded in Image Designer Agent).
 - [ ] Display Input Summary Card on dashboard (backend complete; frontend display missing).
 - [x] Write `product_profile` to `run_metadata.json` under `agent_states.product_profile`.
-- [x] Write `creative_blueprint` to `run_metadata.json` under `agent_states.creative_blueprint`.
+- [x] Write summary card to pipeline state for display at checkpoint.
 
-**Deliverable:** User uploads product image + description; Vision Agent analyzes media with fallback between three models; Summarizer and Image Gen Prompt Agent produce Input Summary Card and Creative Blueprint. ✓ **MOSTLY COMPLETE** — backend agents wired into graph; frontend display of summary card and image prompt checkpoint needed.
+**Deliverable:** User uploads product image + description; Vision Agent analyzes media with fallback between three models; Summarizer Agent produces Input Summary Card; Image Gen Prompt construction is embedded in Image Designer Agent. ✓ **MOSTLY COMPLETE** — backend agents wired into graph; frontend display of summary card and image generation interface needed.
 
 ---
 
@@ -916,81 +816,68 @@ All downstream milestones depend on completing the Image Designer Agent, FLUX in
 - [ ] Build Image Revision Canvas on dashboard: shows generated image(s) with approve / revise / restart controls.
 - [ ] Build Refinement Agent (Claude Sonnet): rewrites prompt from user's natural language feedback.
 - [ ] Implement revision loop (max 10 iterations); save each output as `vN.png` and append iteration record to `run_metadata.json` under `image_iterations`.
-- [ ] Implement Full Restart path: clears visual direction from Creative Blueprint, re-runs Image Agent.
-- [ ] Implement all 5 mode-specific generation quantities and prompt templates (E-Commerce, Social, A/B, Seasonal, Opt-In).
-- [ ] Implement per-image revision for Mode 2 (E-Commerce Batch): each image in the batch has its own independent revision loop (max 10 iterations per image); revisions to one image do not affect others.
+- [ ] Implement Full Restart path: clears visual direction, re-runs Image Designer Agent from scratch.
+- [ ] Implement all 3 mode-specific generation quantities and prompt templates (E-Commerce Batch: 5-12 images, A/B Concept: 3-4 images, Seasonal: 2-3 images).
+- [ ] Implement per-image revision for Mode 1 (E-Commerce Batch): each image in the batch has its own independent revision loop (max 10 iterations per image); revisions to one image do not affect others.
 
-**Status:** Not started. **Priority:** High — core feature blocking all downstream work.
-
----
-
-### Milestone 3 — Market Research Agent (Optional, Deferred) *(Week 7–8)*
-
-- [ ] Integrate SerpAPI; implement HTML-to-Markdown scraper and result cleaner.
-- [ ] Set up per-run ephemeral ChromaDB instance.
-- [ ] Build Phase 1: 60-second question checkpoint card with countdown timer on dashboard.
-- [ ] Build Phase 2: SerpAPI search loop; implement Crossroads Checkpoint card (2-option selector) on dashboard.
-- [ ] Implement parallel sub-agents for the selected research path.
-- [ ] Build Phase 3: Research Report Approval card on dashboard.
-- [ ] Integrate research output into Creative Blueprint generation.
-- [ ] Write `market_report` to `run_metadata.json` under `agent_states`.
-
-**Status:** Not started. **Dependency:** Milestone 2 (Image Generation) must complete first — research feeds into image generation prompts. **Priority:** Medium (optional in Modes 1 & 3).
+**Status:** In progress. **Priority:** Critical — core feature blocking v0.5 release.
 
 ---
 
-### Milestone 4 — Final Review Deck *(Week 9–10)*
+### Milestone 3 — Final Review Deck & Beta Release *(Weeks 7–8)*
 
 - [ ] Build Final Review Deck on dashboard: shows all approved images with per-image download buttons.
 - [ ] Save approved images to `content/<run_id>/` on user download.
 - [ ] Update `run_metadata.json` with `approved_image`, `status: "completed"`, and `completed_at` when the run is finalized.
-
-**Status:** Not started. **Dependency:** Milestone 2 (Image Generation must complete). **Priority:** High — allows users to export final assets.
-
----
-
-### Milestone 5 — Polish, Testing & GitHub Release *(Week 11–13)*
-
-- [ ] Write full `README.md`: project overview, prerequisites, `.env` setup, `docker compose up` instructions, per-agent configuration guide.
-- [ ] Full E2E test across all 5 modes with a real product image.
-- [ ] Load test: 3 concurrent pipeline runs without errors.
+- [ ] Write `README.md` for v0.5 beta: project overview, prerequisites, `.env` setup, `docker compose up` quick start, API key configuration.
+- [ ] Full E2E test across all 3 modes with real product images and videos.
 - [ ] Implement pipeline failure handling: any agent error sets `status: "draft"` in `run_metadata.json`; user can resume from the dashboard.
 - [ ] Add monitoring: FastAPI logs all agent calls, latencies, and errors to local file.
-- [ ] Implement `content/` directory size check on dashboard load; show persistent warning banner when total size exceeds 1 GB.
-- [ ] Performance optimization: Vision Analysis and Market Research run in parallel where mode allows.
 - [ ] Final UI polish: loading states, error states, empty states, mobile-responsive layout.
-- [ ] Public GitHub release: repository, license (AGPL-3.0), `CONTRIBUTING.md`, issue templates.
+- [ ] Create GitHub release (AGPL-3.0 license, `CONTRIBUTING.md`, issue templates).
 
-**Status:** Not started. **Dependency:** All prior milestones (1–4) must be complete. **Priority:** Final / blocking release.
+**Status:** Not started. **Dependency:** Milestone 2 (Image Generation must complete). **Priority:** Critical — blocking beta release.
 
 ---
 
-### Summary Timeline
+### Deferred to v1.0
+
+**Milestone 4 — Market Research Agent**
+
+The following features are deferred to v1.0:
+- Interactive web search via SerpAPI
+- Crossroads checkpoint for user-guided research direction selection
+- 60-second user question window
+- Integration of research findings into creative prompts
+- ChromaDB RAG store for search results
+
+---
+
+### Summary Timeline for v0.5 Beta
 
 ```
-Week  1– 2 │ ██████ Milestone 0: Infrastructure
-Week  3– 4 │ ██████ Milestone 1: Ingestion + Vision + Summarizer + Image Prompt
-Week  5– 6 │ ██████ Milestone 2: Image Generation + Revision Loop
-Week  7– 8 │ ██████ Milestone 3: Market Research Agent (Optional, Deferred)
-Week  9–10 │ ██████ Milestone 4: Final Review Deck
-Week 11–13 │ █████████ Milestone 5: Polish + Testing + GitHub Release
+Weeks  1– 2 │ ██████ Milestone 0: Infrastructure
+Weeks  3– 4 │ ██████ Milestone 1: Ingestion + Vision + Image Prompt
+Weeks  5– 6 │ ██████ Milestone 2: Image Generation + Revision Loop
+Weeks  7– 8 │ ██████ Milestone 3: Final Review Deck + Beta Release
 ```
 
-**Total estimated duration: ~13 weeks (≈ 3 months)** — Market Research can be added mid-pipeline once core flow is solid.
+**Total estimated duration: ~2 months** — Focused, minimal scope.
 
-**Updated data flow:** Input → Processing → Vision Agent → Summary Agent → Image Prompt Agent → (Optional: Market Research) → Image Generation → Final Review
+**v0.5 Data flow:** Input → Ingestion → Vision Analysis → Image Generation → (User Revisions, max 10) → Final Review Deck → Export
 
 ---
 
 ## Where to Start
 
-1. **Start with the `RunManager` and `run_metadata.json` schema.** The schema is the contract every agent writes to. Implement the `RunManager` utility (folder creation, `run_metadata.json` initialization, atomic JSON updates) before writing any agent code.
-2. **Wire the FFmpeg sidecar and prove video ingestion works.** The video path is the most novel piece of ingestion — validate it early before building agents on top of it.
-3. **Build the Vision Agent as a standalone Python function.** Confirm the `product_profile` JSON output matches the Pydantic schema before plugging it into LangGraph.
-4. **Build the Image Generation Agent before the Market Research Agent.** fal.ai FLUX is the most expensive step — only test it once the Creative Blueprint inputs are solid and stable. Market Research (Milestone 3) depends on image generation being stable.
-5. **Build the Market Research Agent standalone and test the interaction loop after image generation works.** Confirm the crossroads checkpoint and 60-second timer both work end-to-end, then wire the research output into the Creative Blueprint.
-6. **Build all five mode execution paths simultaneously in Milestone 2.** The differences between modes are primarily in the prompt template and image quantity — it is cheaper to build them together than to retrofit them one by one.
-7. **Do not start on the GitHub release or docs until Milestone 4 is complete and the full pipeline works.** Documentation written against incomplete code will need to be rewritten.
+1. **Complete Milestone 1 (Ingestion + Vision).** Backend already has these agents wired. Frontend needs display of the image generation interface.
+2. **Build Milestone 2 (Image Generation).** This is the core feature:
+   - Image Designer Agent: constructs FLUX prompts from product profile + steering params.
+   - FLUX Dev integration: async polling with content moderation.
+   - Refinement Agent: rewrites prompts from user feedback.
+   - Revision loop: max 10 iterations per image.
+3. **Implement all 3 mode-specific paths in Milestone 2.** The differences are primarily in image quantities and prompt styling — build them in parallel.
+4. **Build Milestone 3 (Review Deck + Polish).** Once images generate reliably, finalize the UI and release.
 
 ---
 
@@ -1004,10 +891,8 @@ Week 11–13 │ █████████ Milestone 5: Polish + Testing + Git
 | FFmpeg extraction | Assert frame count ≤ 15; assert output files exist |
 | 3D sidecar | Assert 4 PNG thumbnails generated for a valid GLTF file |
 | Vision Agent | Assert `product_profile` JSON matches Pydantic schema |
-| Research Agent — Phase 1 timeout | Assert auto-proceed at 60s when no user input; assert question appended when input provided |
-| Research Agent — Crossroads | Assert pipeline pauses when two options detected; assert sub-agents receive only the selected path's context |
-| Image Agent — mode quantities | Assert Mode 2 generates 5–12 images; Mode 3 generates 1; Mode 4 generates 3–4; Mode 5 generates 2–3 |
-| Revision loop | Assert revised prompt incorporates user instruction; assert iteration logged to `run_metadata.json` under `image_iterations` |
+| Image Agent — mode quantities | Assert Mode 1 generates 5–12 images; Mode 2 generates 3–4 images; Mode 3 generates 2–3 images |
+| Revision loop | Assert revised prompt incorporates user instruction; assert iteration logged to `run_metadata.json` |
 | Revision loop cap | Assert "accept current" prompt shown after 10 iterations |
 | Logo compositing | Assert logo appears at correct corner in output image; assert compositing re-applied on revision |
 
@@ -1016,19 +901,18 @@ Week 11–13 │ █████████ Milestone 5: Polish + Testing + Git
 | Flow | Test |
 |---|---|
 | Ingestion → Vision | Upload real product image + video; assert `content/<run_id>/run_metadata.json` created with `agent_states.product_profile` populated |
-| Vision → Summarizer | Assert Input Summary Card contains data from both Vision Agent and user description fields |
-| Research → Blueprint | Assert Creative Blueprint contains `visual_direction` from approved research report |
-| Blueprint → Image | Assert FLUX prompt contains visual direction tokens from Creative Blueprint |
-| Image revision | Simulate revision instruction; assert new prompt differs from previous; assert both logged in `run_metadata.json` `image_iterations`; assert `v2.png` exists |
-| Mode 2 batch | Assert 5 images generated; assert all at Studio-style prompt constraints |
-| Mode 4 A/B | Assert 3–4 images generated with distinct concept labels and differing prompts |
+| Vision → Image Generation | Assert FLUX prompt is constructed correctly from product profile + steering parameters |
+| Image Generation → Revision | Simulate revision instruction; assert new prompt differs from previous; assert both logged in `run_metadata.json` `image_iterations`; assert `v2.png` exists |
+| Mode 1 (E-Commerce) batch | Assert 5–12 images generated; assert all at Studio-style prompt constraints |
+| Mode 2 (A/B Concept) | Assert 3–4 images generated with distinct concept labels and differing prompts |
+| Mode 3 (Seasonal) | Assert 2–3 images generated with seasonal theme injection |
 | Logo overlay | Assert logo file composited onto each generated image at specified corner |
 | Image → Review Deck | Assert Review Deck shows all approved images; assert download saves file to `content/<run_id>/` |
 
 ### E2E Tests
 
 - Fixed test product (image + video + description + logo + reference image) used for every E2E run.
-- Run full pipeline in all 5 modes, all with supervision ON.
+- Run full pipeline in all 3 modes, all with supervision ON.
 - Assert `run_metadata.json` is fully populated (all `agent_states`, `image_iterations`, `approved_image`, `status: "completed"`) after a successful run.
 - Assert generated image is visually coherent (manual review step).
 - Assert logo is visible and correctly positioned on the output.
@@ -1042,17 +926,16 @@ Week 11–13 │ █████████ Milestone 5: Polish + Testing + Git
 | # | Risk | Severity | Likelihood | Mitigation |
 |---|------|----------|------------|------------|
 | **R-1** | fal.ai FLUX returns content-flagged output | Medium | Medium | Content moderation gate + 2 auto-retries; escalate to user with clear error message if all retries fail |
-| **R-2** | SerpAPI rate limit hit during research | Medium | Medium | Per-query caching in ChromaDB; exponential backoff on 429 errors |
-| **R-3** | fal.ai async job times out (>5 min) | Medium | Low | Hard 5-minute timeout; save run as `draft`; surface retry button on dashboard |
-| **R-4** | User-uploaded video is corrupted or unsupported codec | Medium | High | File validation at ingestion boundary; clear error message with supported format list |
-| **R-5** | FFmpeg frame extraction slow for large videos | Low | Medium | 2-minute / 100MB cap enforced at upload; parallel frame extraction |
-| **R-6** | GPT-4o Vision produces inaccurate product profile | Medium | Low | Display Input Summary Card so user can catch and correct misidentification before proceeding |
-| **R-7** | OpenAI / Anthropic / fal.ai API costs spike unexpectedly for self-hosted users | Medium | Low | Document per-run cost estimates prominently in README; add optional hard token budget config in `.env` |
-| **R-8** | User revision loop runs indefinitely | Low | Low | Hard cap at 10 revision iterations; "accept current image" prompt displayed after cap is reached |
-| **R-9** | 3D model rendering fails on obscure file variants | Low | Medium | Catch Three.js render errors; skip 3D input gracefully and proceed with available inputs; log warning |
-| **R-10** | User abandons pipeline mid-run at a checkpoint | Low | Medium | LangGraph state is written to `run_metadata.json` after every node; `status` set to `"draft"`; run folder preserved and resumable from dashboard |
-| **R-11** | Logo compositing produces misaligned or disproportionate overlays | Medium | Medium | Configurable margin and max-width constraints in Sharp compositor; preview logo overlay before run in a future update |
-| **R-12** | Reference image style extraction is too literal, overriding product identity | Medium | Medium | Refinement Agent preserves product-preservation tokens in all prompt revisions; user can exclude reference image via the form |
+| **R-2** | fal.ai async job times out (>5 min) | Medium | Low | Hard 5-minute timeout; save run as `draft`; surface retry button on dashboard |
+| **R-3** | User-uploaded video is corrupted or unsupported codec | Medium | High | File validation at ingestion boundary; clear error message with supported format list |
+| **R-4** | FFmpeg frame extraction slow for large videos | Low | Medium | 2-minute / 100MB cap enforced at upload; parallel frame extraction |
+| **R-5** | GPT-4o Vision produces inaccurate product profile | Medium | Low | Display product profile clearly; user can verify before proceeding to image generation |
+| **R-6** | OpenAI / Anthropic / fal.ai API costs spike unexpectedly for self-hosted users | Medium | Low | Document per-run cost estimates prominently in README; add optional hard token budget config in `.env` |
+| **R-7** | User revision loop runs indefinitely | Low | Low | Hard cap at 10 revision iterations; "accept current image" prompt displayed after cap is reached |
+| **R-8** | 3D model rendering fails on obscure file variants | Low | Medium | Catch Three.js render errors; skip 3D input gracefully and proceed with available inputs; log warning |
+| **R-9** | User abandons pipeline mid-run at a checkpoint | Low | Medium | LangGraph state is written to `run_metadata.json` after every node; `status` set to `"draft"`; run folder preserved and resumable from dashboard |
+| **R-10** | Logo compositing produces misaligned or disproportionate overlays | Medium | Medium | Configurable margin and max-width constraints in Sharp compositor; preview logo overlay before run in a future update |
+| **R-11** | Reference image style extraction is too literal, overriding product identity | Medium | Medium | Vision Agent preserves product-preservation tokens in all prompts; user can exclude reference image via the form |
 
 ---
 
@@ -1066,7 +949,7 @@ Week 11–13 │ █████████ Milestone 5: Polish + Testing + Git
 | End-to-end latency — supervised pipeline (excluding user think time) | < 6 minutes |
 | End-to-end latency — autonomous pipeline (all supervision OFF) | < 4 minutes |
 | Vision analysis: correct product category identification | ≥ 90% |
-| Generated image relevance to Creative Blueprint | ≥ 85% (manual assessment on test set) |
+| Generated image relevance to product profile | ≥ 85% (manual assessment on test set) |
 | % of runs where user approves image on first generation (no revision) | ≥ 60% |
 | Logo compositing accuracy (logo at correct corner, not distorted) | 100% |
 
@@ -1074,31 +957,41 @@ Week 11–13 │ █████████ Milestone 5: Polish + Testing + Git
 
 | Metric | Target |
 |---|---|
-| GitHub stars | ≥ 500 |
-| Repository forks | ≥ 100 |
-| Community-submitted issues or PRs | ≥ 20 |
+| GitHub stars | ≥ 300 (conservative target for beta) |
+| Repository forks | ≥ 50 |
+| Community-submitted issues or PRs | ≥ 10 |
 | Setup time for a developer with API keys already available | < 15 minutes |
 
 ---
 
 ## Open Questions
 
-All open questions from v1.0 have been resolved. Decisions are recorded below for reference.
+### v0.5 Beta Scope
+
+This beta release focuses exclusively on image generation. The following questions are deferred to v1.0 when market research and copy generation are added:
+
+| # | Question | Deferred to v1.0 |
+|---|---|---|
+| 1 | Market research — agent or user? | User will optionally trigger research; agent performs web searches and presents findings. |
+| 2 | Copy generation — in-pipeline or post-export? | To be decided during v1.0 planning. |
+| 3 | Caption Agent — required or optional? | Optional in v1.0. Users can export images without captions. |
+| 4 | Multi-reference images? | Single reference image in v0.5 and v1.0. Multi-reference deferred. |
+
+### v0.5 Beta Decisions (Final)
 
 | # | Question | Decision |
 |---|---|---|
 | 1 | Video-only submission path? | **Closed.** Product Image is strictly required. The system will not proceed without it. No video-to-keyframe fallback. |
-| 2 | Allow multiple reference images? | **Closed.** Single reference image only in v1. Multi-reference deferred to v2. |
-| 3 | Mode 4 concept directions: agent or user? | **Closed.** Agent chooses concepts by default. User may optionally specify directions in a free-text field on the submission form. |
-| 4 | Run folder disk accumulation? | **Closed.** Pipeline monitors total `content/` size and shows a warning banner when it exceeds 1 GB. No automatic deletion — user controls their data. |
-| 5 | Mode 2 revision: per-image or collective? | **Closed.** Per-image revision is supported in v1. Each batch image has its own independent revision loop (max 10 iterations). |
-| 6 | Caption Agent in v1? | **Closed.** Caption generation is removed from v1 entirely. Users export images and write copy manually. |
+| 2 | Mode 2 (A/B Concept) directions: agent or user? | **Closed.** Agent chooses concepts by default. User may optionally specify directions in a free-text field on the submission form. |
+| 3 | Run folder disk accumulation? | **Closed.** Pipeline monitors total `content/` size and shows a warning banner when it exceeds 1 GB. No automatic deletion — user controls their data. |
+| 4 | Mode 1 revision: per-image or collective? | **Closed.** Per-image revision is supported in v0.5. Each batch image has its own independent revision loop (max 10 iterations). |
+| 5 | Logo compositing — post-generation? | **Closed.** Logo is collected and applied after image generation, never sent to the vision model or image generator. |
 
 ---
 
-*This document covers v1 scope only. Future versions will introduce social media publishing, post analytics, closed-loop prompt optimization, and video reel production. See `PRD_MultiAgent_Social_Pipeline.md` for the full product roadmap.*
+*This document covers v0.5 Beta scope only. Image generation pipeline with 3 modes and revision loops. Market research agent, copy generation, and social publishing deferred to v1.0. See `PRD_v1_Image_Pipeline.md` for the full future roadmap.*
 
 ---
 
 **Prepared by:** Antigravity AI & Claude
-**Version:** 1.0 — June 17, 2026
+**Version:** 0.5 Beta — June 20, 2026
