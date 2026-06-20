@@ -2,7 +2,7 @@ import { SearchIcon, BellIcon, DownloadIcon } from "./icons";
 import { NewGeneration } from "./NewGeneration";
 import { ThemeToggle } from "./ThemeToggle";
 
-export function Topbar() {
+export function Topbar({ onNewGeneration }: { onNewGeneration: () => void }) {
   return (
     <header className="topbar">
       <div className="search">
@@ -16,7 +16,7 @@ export function Topbar() {
           <span className="dot" />
         </button>
         <button className="btn btn-outline btn-sm"><DownloadIcon /> Export</button>
-        <NewGeneration />
+        <NewGeneration onClick={onNewGeneration} />
       </div>
     </header>
   );
