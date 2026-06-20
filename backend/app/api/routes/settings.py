@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 from dotenv import set_key
@@ -78,7 +79,8 @@ async def get_settings() -> dict[str, str]:
 
 @router.patch("")
 async def patch_settings(body: SettingsPatch) -> dict[str, Any]:
-    dotenv_path: str = settings.model_config.get("env_file", ".env")
+    raw_path = settings.model_config.get("env_file", ".env")
+    dotenv_path = Path(raw_path).resolve()
 
     updates = body.model_dump(exclude_none=True)
     for field, value in updates.items():
