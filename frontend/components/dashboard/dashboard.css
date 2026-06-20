@@ -191,8 +191,6 @@
 
 /* ---------- Content ---------- */
 .pp-dash .content { padding: var(--space-6) var(--space-7) var(--space-8); display: flex; flex-direction: column; gap: var(--space-6); }
-.pp-dash .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
-.pp-dash .page-head p { color: var(--muted-fg); margin-top: 4px; font-size: 15px; }
 
 /* ---------- Card ---------- */
 .pp-dash .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); }
@@ -200,7 +198,7 @@
 .pp-dash .section-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
 
 /* ---------- Pipeline stages ---------- */
-.pp-dash .stages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; padding: var(--space-5); }
+.pp-dash .stages { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; padding: var(--space-5); }
 .pp-dash .stage { position: relative; display: flex; flex-direction: column; gap: var(--space-2); padding-right: var(--space-4); }
 .pp-dash .stage:not(:last-child)::after {
   content: ""; position: absolute; top: 15px; right: 6px; width: calc(100% - 38px); height: 2px;
@@ -335,16 +333,7 @@
 
 /* post-submit result screen inside the modal — no raw logs */
 @keyframes pp-spin { to { transform: rotate(360deg); } }
-.pp-dash .gen-result { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-3); padding: var(--space-7) var(--space-4); min-height: 220px; }
 .pp-dash .spinner { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: pp-spin 0.8s linear infinite; }
-.pp-dash .res-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
-.pp-dash .res-icon.ok { background: var(--green); }
-.pp-dash .res-icon.bad { background: var(--destructive); }
-.pp-dash .res-title { font-weight: 700; font-size: 18px; color: var(--secondary); }
-.pp-dash .res-sub { font-size: 13px; color: var(--muted-fg); max-width: 460px; }
-.pp-dash .res-assets { list-style: none; padding: 0; margin: var(--space-2) 0 0; display: flex; flex-direction: column; gap: var(--space-2); font-size: 13px; }
-.pp-dash .res-assets li { display: flex; align-items: center; gap: var(--space-2); color: var(--fg); }
-.pp-dash .res-assets li.bad { color: var(--destructive); }
 .pp-dash .btn-spin { width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(var(--secondary-rgb),0.35); border-top-color: var(--secondary); animation: pp-spin 0.8s linear infinite; }
 
 /* ---------- Empty state ---------- */

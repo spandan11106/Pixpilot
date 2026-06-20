@@ -1,3 +1,5 @@
+"use client";
+
 import { PlusIcon } from "./icons";
 
 export function EmptyState({ onNewGeneration }: { onNewGeneration: () => void }) {
