@@ -2,7 +2,14 @@ import {
   GridIcon, ImageIcon, ModelIcon, BoltIcon,
 } from "./icons";
 
-export function Sidebar() {
+export type AppView = "workflow" | "generations";
+
+interface SidebarProps {
+  activeView: AppView;
+  onViewChange: (view: AppView) => void;
+}
+
+export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -13,9 +20,21 @@ export function Sidebar() {
       </div>
 
       <nav className="nav-group">
-        <a className="nav-item active" href="#"><GridIcon /> Workflow</a>
-        <a className="nav-item" href="#"><ImageIcon /> Generations</a>
-        <a className="nav-item" href="#"><ModelIcon /> Models</a>
+        <button
+          className={`nav-item${activeView === "workflow" ? " active" : ""}`}
+          onClick={() => onViewChange("workflow")}
+        >
+          <GridIcon /> Workflow
+        </button>
+        <button
+          className={`nav-item${activeView === "generations" ? " active" : ""}`}
+          onClick={() => onViewChange("generations")}
+        >
+          <ImageIcon /> Generations
+        </button>
+        <button className="nav-item" disabled>
+          <ModelIcon /> Models
+        </button>
       </nav>
 
       <div className="sidebar-foot">
