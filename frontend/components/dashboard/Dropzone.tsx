@@ -34,11 +34,12 @@ export type DropzoneProps = {
   onToken: (token: string | null) => void;
   onStatus?: (status: AssetStatus) => void;
   onZoom?: (src: string) => void;
+  onImageUrl?: (url: string) => void;
 };
 
 export function Dropzone({
   fileType, accept, title, sub, preview, icon, maxMB, required, promptIcon,
-  onToken, onStatus, onZoom,
+  onToken, onStatus, onZoom, onImageUrl,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const objUrlRef = useRef<string | null>(null);
@@ -72,6 +73,7 @@ export function Dropzone({
       const url = URL.createObjectURL(f);
       objUrlRef.current = url;
       setImgUrl(url);
+      onImageUrl?.(url);
     }
   }
 
