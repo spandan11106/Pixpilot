@@ -7,7 +7,7 @@
 >
 > **PROGRESS SUMMARY (as of June 20, 2026):**
 > - **Milestone 0 (Infrastructure):** ✅ COMPLETE
-> - **Milestone 1 (Ingestion + Vision + Summary):** ✅ MOSTLY COMPLETE (backend wired; frontend display of summary card missing)
+> - **Milestone 1 (Ingestion + Vision + Summary):** ✅ COMPLETE (backend wired; Input Summary Card displayed inline in live event log)
 > - **Milestone 2 (Image Generation + Revision):** ⏳ NOT STARTED
 > - **Milestone 3 (Market Research):** ⏳ NOT STARTED
 > - **Milestone 4 (Final Review Deck):** ⏳ NOT STARTED

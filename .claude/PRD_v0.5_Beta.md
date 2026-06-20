@@ -8,7 +8,7 @@
 >
 > **PROGRESS SUMMARY (as of June 20, 2026):**
 > - **Milestone 0 (Infrastructure):** ✅ COMPLETE
-> - **Milestone 1 (Ingestion + Vision + Summarizer):** ✅ MOSTLY COMPLETE (backend wired; frontend missing Input Summary Card display and image generation interface)
+> - **Milestone 1 (Ingestion + Vision + Summarizer):** ✅ MOSTLY COMPLETE (backend wired; Input Summary Card displayed inline in live event log; image generation interface missing)
 > - **Milestone 2 (Image Generation + Revision):** ⏳ IN PROGRESS (critical path for v0.5 beta)
 > - **Milestone 3 (Final Review Deck + Beta Release):** ⏳ NOT STARTED
 > - **v1.0 Future:** Market Research Agent, Copy Generation, and Social Publishing deferred
