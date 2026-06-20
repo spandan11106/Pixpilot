@@ -4,6 +4,15 @@
 > **Version:** 2.0
 > **Date:** June 17, 2026
 > **Status:** Draft — Awaiting Review
+>
+> **PROGRESS SUMMARY (as of June 20, 2026):**
+> - **Milestone 0 (Infrastructure):** ✅ COMPLETE
+> - **Milestone 1 (Ingestion + Vision + Summary):** ✅ MOSTLY COMPLETE (backend wired; frontend display of summary card missing)
+> - **Milestone 2 (Image Generation + Revision):** ⏳ NOT STARTED
+> - **Milestone 3 (Market Research):** ⏳ NOT STARTED
+> - **Milestone 4 (Final Review Deck):** ⏳ NOT STARTED
+> - **Milestone 5 (Polish + Release):** ⏳ NOT STARTED
+>
 > **Changelog from v1.2:**
 > - Project is fully open-source and self-hosted only. No SaaS deployment, no billing infrastructure, no cloud hosting from the maintainer's side in v1.
 > - Social media posting, analytics harvesting, and closed-loop prompt optimization are removed from v1 scope entirely. These are deferred to a future version.
@@ -32,12 +41,13 @@
 11. [Tech Stack](#tech-stack)
 12. [System Architecture](#system-architecture)
 13. [Database Schema](#database-schema)
-14. [Milestones & Delivery Plan](#milestones--delivery-plan)
-15. [Where to Start](#where-to-start)
-16. [Testing Strategy](#testing-strategy)
-17. [Risks & Mitigations](#risks--mitigations)
-18. [Success Metrics (KPIs)](#success-metrics-kpis)
-19. [Open Questions](#open-questions)
+14. [Current Status & Next Steps](#current-status--next-steps)
+15. [Milestones & Delivery Plan](#milestones--delivery-plan)
+16. [Where to Start](#where-to-start)
+17. [Testing Strategy](#testing-strategy)
+18. [Risks & Mitigations](#risks--mitigations)
+19. [Success Metrics (KPIs)](#success-metrics-kpis)
+20. [Open Questions](#open-questions)
 
 ---
 
@@ -816,6 +826,54 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 
 ---
 
+## Current Status & Next Steps
+
+### What's Done ✅
+
+**Backend Pipeline (Fully Functional)**
+- Text, image, video, and 3D model ingestion and processing
+- Vision Agent with provider fallback chain (OpenAI GPT-4o → Anthropic Claude → Google Gemini)
+- Summary Agent: generates both the Input Summary Card and creative image generation prompt
+- Full integration into LangGraph pipeline with SSE streaming to frontend
+
+**Frontend Submission**
+- Complete submission form with all required and optional fields
+- Mode selector (all 5 modes: E-Commerce, Social, A/B, Seasonal, Summarize)
+- Steering parameter selectors (aspect ratio, camera, lighting preset, negative prompts)
+- Supervision toggles
+- Media upload with client-side processing caching
+- Basic processing result screen (shows success/failure summary)
+
+**Testing**
+- 21 tests covering Vision Agent and all three providers
+- 10 tests covering Summary Agent
+
+### What's Missing / Blocking Progress ⏳
+
+**Critical Blocker: Milestone 2 (Image Generation)**
+All downstream milestones depend on completing the Image Designer Agent, FLUX integration, and Revision Loop. Without this, users cannot generate images.
+
+**Highest Priority**
+1. Image Designer Agent → constructs FLUX Dev prompts
+2. FLUX Dev integration → async polling, content moderation, 2 retries
+3. Image Revision Canvas → frontend display of generated image(s)
+4. Refinement Agent → rewrites prompts from user feedback
+5. Revision loop implementation → max 10 iterations per image
+
+**Later (Milestone 3)**
+- Market Research Agent (depends on Image Generation being stable)
+- Checkpoint cards for research (60s question, crossroads, approval)
+
+**Finally (Milestone 4 & 5)**
+- Final Review Deck and asset export
+- Full E2E testing, polish, GitHub release
+
+### Recommended Next Action
+
+**Build Milestone 2 immediately.** The Image Designer Agent and FLUX integration are the critical path to unblocking the entire product. Once images can be generated, revision loops and market research become feasible.
+
+---
+
 ## Milestones & Delivery Plan
 
 ### Milestone 0 — Infrastructure Setup *(Week 1–2)*
@@ -842,13 +900,13 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 - [x] Implement 3D model rendering via Three.js sidecar (4 perspective thumbnails).
 - [x] Process reference style image during ingestion (downscale + base64) for Vision Agent consumption.
 - [x] Build Vision Agent (model-flexible: OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet, Google Gemini 2.0): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON with fallback chain and human-in-the-loop checkpoint on failure.
-- [ ] Build Summarizer Agent (Claude Haiku): merges product profile + description fields into Input Summary Card.
-- [ ] Build Image Gen Prompt Agent (Claude Sonnet): generates creative blueprint from product profile + description + research (optional) + steering parameters.
-- [ ] Display Input Summary Card on dashboard.
-- [ ] Write `product_profile` to `run_metadata.json` under `agent_states.product_profile`.
-- [ ] Write `creative_blueprint` to `run_metadata.json` under `agent_states.creative_blueprint`.
+- [x] Build Summarizer Agent (Claude Haiku): merges product profile + description fields into Input Summary Card.
+- [x] Build Image Gen Prompt Agent (Claude Sonnet): generates creative blueprint from product profile + description + research (optional) + steering parameters.
+- [ ] Display Input Summary Card on dashboard (backend complete; frontend display missing).
+- [x] Write `product_profile` to `run_metadata.json` under `agent_states.product_profile`.
+- [x] Write `creative_blueprint` to `run_metadata.json` under `agent_states.creative_blueprint`.
 
-**Deliverable:** User uploads product image + description; Vision Agent analyzes media with fallback between three models; Summarizer and Image Gen Prompt Agent produce Input Summary Card and Creative Blueprint.
+**Deliverable:** User uploads product image + description; Vision Agent analyzes media with fallback between three models; Summarizer and Image Gen Prompt Agent produce Input Summary Card and Creative Blueprint. ✓ **MOSTLY COMPLETE** — backend agents wired into graph; frontend display of summary card and image prompt checkpoint needed.
 
 ---
 
@@ -865,7 +923,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 - [ ] Implement all 5 mode-specific generation quantities and prompt templates (E-Commerce, Social, A/B, Seasonal, Opt-In).
 - [ ] Implement per-image revision for Mode 2 (E-Commerce Batch): each image in the batch has its own independent revision loop (max 10 iterations per image); revisions to one image do not affect others.
 
-**Deliverable:** User can generate images in any mode, iterate via natural language, and approve a final output.
+**Status:** Not started. **Priority:** High — core feature blocking all downstream work.
 
 ---
 
@@ -880,7 +938,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 - [ ] Integrate research output into Creative Blueprint generation.
 - [ ] Write `market_report` to `run_metadata.json` under `agent_states`.
 
-**Deliverable:** Optional research flow works end-to-end: question input → search → crossroads → report approval. Can be triggered conditionally in Modes 1 and 3.
+**Status:** Not started. **Dependency:** Milestone 2 (Image Generation) must complete first — research feeds into image generation prompts. **Priority:** Medium (optional in Modes 1 & 3).
 
 ---
 
@@ -890,7 +948,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 - [ ] Save approved images to `content/<run_id>/` on user download.
 - [ ] Update `run_metadata.json` with `approved_image`, `status: "completed"`, and `completed_at` when the run is finalized.
 
-**Deliverable:** Full pipeline runs end-to-end. User can approve images and download assets.
+**Status:** Not started. **Dependency:** Milestone 2 (Image Generation must complete). **Priority:** High — allows users to export final assets.
 
 ---
 
@@ -906,7 +964,7 @@ Written progressively as the pipeline executes. Each agent node appends or updat
 - [ ] Final UI polish: loading states, error states, empty states, mobile-responsive layout.
 - [ ] Public GitHub release: repository, license (AGPL-3.0), `CONTRIBUTING.md`, issue templates.
 
-**Deliverable:** Production-quality self-hosted release published on GitHub.
+**Status:** Not started. **Dependency:** All prior milestones (1–4) must be complete. **Priority:** Final / blocking release.
 
 ---
 
