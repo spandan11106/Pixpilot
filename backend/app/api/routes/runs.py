@@ -1,8 +1,12 @@
+import json
+import mimetypes
 import re
+import shutil
 from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, model_validator
 
 from app.core.run_manager import run_manager
@@ -103,10 +107,61 @@ def _resolve_token(token: str | None, label: str) -> Path | None:
     return resolved_file
 
 
+def _validate_run_dir(run_id: str) -> Path:
+    if not _UUID4_RE.match(run_id):
+        raise HTTPException(status_code=404, detail="Run not found.")
+    run_dir = (settings.content_dir / run_id).resolve()
+    if not run_dir.is_relative_to(settings.content_dir.resolve()) or not run_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return run_dir
+
+
+@router.get("")
+async def list_runs() -> list[dict]:
+    runs: list[dict] = []
+    content_root = settings.content_dir.resolve()
+    for entry in content_root.iterdir():
+        if not entry.is_dir() or entry.name == "uploads":
+            continue
+        metadata_path = entry / "run_metadata.json"
+        if not metadata_path.exists():
+            continue
+        with open(metadata_path) as f:
+            runs.append(json.load(f))
+    return sorted(runs, key=lambda r: r.get("created_at", ""), reverse=True)
+
+
+@router.get("/{run_id}/inputs/{filename}")
+async def get_input_file(run_id: str, filename: str) -> FileResponse:
+    run_dir = _validate_run_dir(run_id)
+    inputs_dir = (run_dir / "inputs").resolve()
+    file_path = (inputs_dir / filename).resolve()
+    if not file_path.is_relative_to(inputs_dir) or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found.")
+    media_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+    return FileResponse(file_path, media_type=media_type)
+
+
+@router.get("/{run_id}/ingestion")
+async def get_ingestion(run_id: str) -> dict:
+    run_dir = _validate_run_dir(run_id)
+    ingestion_path = run_dir / "processed" / "ingestion.json"
+    if not ingestion_path.exists():
+        raise HTTPException(status_code=404, detail="Ingestion data not available.")
+    with open(ingestion_path) as f:
+        return json.load(f)
+
+
 @router.post("", response_model=CreateRunResponse, status_code=201)
 async def create_run() -> CreateRunResponse:
     run_id = run_manager.create_run()
     return CreateRunResponse(run_id=run_id)
+
+
+@router.delete("/{run_id}", status_code=204)
+async def delete_run(run_id: str) -> None:
+    run_dir = _validate_run_dir(run_id)
+    shutil.rmtree(run_dir)
 
 
 @router.get("/{run_id}/metadata")
