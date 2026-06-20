@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import runs, sse, uploads
+from app.api.routes import runs, settings as settings_router, sse, uploads
 from app.core.settings import settings
 from app.core.workspace import init_workspace
 
@@ -30,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(runs.router)
+app.include_router(settings_router.router)
 app.include_router(sse.router)
 app.include_router(uploads.router)
 
