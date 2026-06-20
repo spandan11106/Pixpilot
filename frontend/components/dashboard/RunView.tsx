@@ -125,20 +125,80 @@ export function RunView({ run, onDismiss }: { run: RunMeta; onDismiss: () => voi
                 Waiting for pipeline events…
               </div>
             )}
-            {messages.map((msg, i) => (
-              <div key={i} className={`log-item ${msg.event.includes("error") || msg.event.includes("failed") ? "log-error" : msg.event === "pipeline_complete" ? "log-ok" : ""}`}>
-                <span className="log-event">{msg.event}</span>
-                {Object.keys(msg.data).length > 0 && (
-                  <span className="log-data">
-                    {Object.entries(msg.data)
-                      .filter(([k]) => k !== "run_id")
-                      .slice(0, 3)
-                      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
-                      .join(" · ")}
-                  </span>
-                )}
-              </div>
-            ))}
+            {messages.map((msg, i) => {
+              if (msg.event === "summary_complete" && msg.data.summary_card) {
+                const card = msg.data.summary_card as Record<string, unknown>;
+                return (
+                  <div key={i} className="log-item log-summary-card">
+                    <div className="summary-card-title">
+                      <span className="log-event">summary_complete</span>
+                      <span className="badge badge-success" style={{ fontSize: 10, padding: "1px 6px" }}>
+                        {card.vision_available ? "Vision" : "Text-only"}
+                      </span>
+                    </div>
+                    <div className="summary-card-body">
+                      <div className="summary-card-header">
+                        <span className="summary-product-name">{String(card.product_name ?? "")}</span>
+                        {!!card.product_category && (
+                          <span className="caption" style={{ color: "var(--text-muted)" }}>{String(card.product_category)}</span>
+                        )}
+                      </div>
+                      {Array.isArray(card.key_features) && card.key_features.length > 0 && (
+                        <div className="summary-row">
+                          <span className="overline">Features</span>
+                          <span className="body-s">{(card.key_features as string[]).join(" · ")}</span>
+                        </div>
+                      )}
+                      {!!card.target_audience && (
+                        <div className="summary-row">
+                          <span className="overline">Audience</span>
+                          <span className="body-s">{String(card.target_audience)}</span>
+                        </div>
+                      )}
+                      {Array.isArray(card.dominant_colors) && card.dominant_colors.length > 0 && (
+                        <div className="summary-row">
+                          <span className="overline">Colors</span>
+                          <span className="summary-swatches">
+                            {(card.dominant_colors as string[]).map((hex) => (
+                              <span key={hex} className="summary-swatch-item">
+                                <span className="summary-swatch" style={{ background: hex }} />
+                                <span className="caption">{hex}</span>
+                              </span>
+                            ))}
+                          </span>
+                        </div>
+                      )}
+                      {Array.isArray(card.materials) && card.materials.length > 0 && (
+                        <div className="summary-row">
+                          <span className="overline">Materials</span>
+                          <span className="body-s">{(card.materials as string[]).join(", ")}</span>
+                        </div>
+                      )}
+                      {!!card.style_vibe && (
+                        <div className="summary-row">
+                          <span className="overline">Style Vibe</span>
+                          <span className="body-s" style={{ fontStyle: "italic" }}>{String(card.style_vibe)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={i} className={`log-item ${msg.event.includes("error") || msg.event.includes("failed") ? "log-error" : msg.event === "pipeline_complete" ? "log-ok" : ""}`}>
+                  <span className="log-event">{msg.event}</span>
+                  {Object.keys(msg.data).length > 0 && (
+                    <span className="log-data">
+                      {Object.entries(msg.data)
+                        .filter(([k]) => k !== "run_id" && k !== "summary_card")
+                        .slice(0, 3)
+                        .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
+                        .join(" · ")}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

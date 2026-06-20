@@ -330,6 +330,7 @@ async def summary_agent_node(state: PipelineState) -> dict:
         {
             "vision_available": summary_card.get("vision_available", False),
             "product_name": summary_card.get("product_name"),
+            "summary_card": summary_card,
         },
         results=results,
     )

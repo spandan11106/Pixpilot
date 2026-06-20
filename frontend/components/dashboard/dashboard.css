@@ -392,6 +392,17 @@
 .pp-dash .log-item.log-ok .log-event { color: var(--green); }
 .pp-dash .log-data { font-size: 12px; color: var(--muted-fg); word-break: break-word; }
 
+/* Summary card log entry */
+.pp-dash .log-item.log-summary-card { border-left: 3px solid var(--primary); padding-left: calc(var(--space-5) - 3px); background: rgba(var(--primary-rgb, 99,102,241), 0.04); gap: var(--space-2); }
+.pp-dash .summary-card-title { display: flex; align-items: center; gap: var(--space-2); }
+.pp-dash .summary-card-body { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.pp-dash .summary-card-header { display: flex; flex-direction: column; gap: 1px; padding-bottom: 2px; }
+.pp-dash .summary-product-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.pp-dash .summary-row { display: grid; grid-template-columns: 72px 1fr; gap: var(--space-2); align-items: baseline; }
+.pp-dash .summary-swatches { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pp-dash .summary-swatch-item { display: flex; align-items: center; gap: 4px; }
+.pp-dash .summary-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--border); flex: none; }
+
 @media (max-width: 1100px) {
   .pp-dash .run-body { grid-template-columns: 1fr; }
   .pp-dash .stages { grid-template-columns: repeat(3, 1fr); }
