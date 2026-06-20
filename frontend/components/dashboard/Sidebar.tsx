@@ -2,7 +2,7 @@ import {
   GridIcon, ImageIcon, ModelIcon, BoltIcon,
 } from "./icons";
 
-export type AppView = "workflow" | "generations";
+export type AppView = "workflow" | "generations" | "models";
 
 interface SidebarProps {
   activeView: AppView;
@@ -32,7 +32,10 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         >
           <ImageIcon /> Generations
         </button>
-        <button className="nav-item" disabled>
+        <button
+          className={`nav-item${activeView === "models" ? " active" : ""}`}
+          onClick={() => onViewChange("models")}
+        >
           <ModelIcon /> Models
         </button>
       </nav>
