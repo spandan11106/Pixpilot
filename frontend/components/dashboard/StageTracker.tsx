@@ -1,5 +1,12 @@
-import { type Stage } from "./data";
+"use client";
 import { CheckIcon } from "./icons";
+
+export type Stage = {
+  name: string;
+  meta: string;
+  state: "done" | "active" | "pending";
+  label?: string;
+};
 
 export function StageTracker({ stages, bare }: { stages: Stage[]; bare?: boolean }) {
   return (
