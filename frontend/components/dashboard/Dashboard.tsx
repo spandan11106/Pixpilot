@@ -8,6 +8,7 @@ import { EmptyState } from "./EmptyState";
 import { RunView } from "./RunView";
 import { NewGenerationModal, type RunMeta } from "./NewGenerationModal";
 import { GenerationsPage } from "./GenerationsPage";
+import { ModelsPage } from "./ModelsPage";
 
 export function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -21,7 +22,9 @@ export function Dashboard() {
         <div className="main">
           <Topbar onNewGeneration={() => setModalOpen(true)} />
           <main className="content">
-            {view === "generations" ? (
+            {view === "models" ? (
+              <ModelsPage />
+            ) : view === "generations" ? (
               <GenerationsPage />
             ) : activeRun ? (
               <RunView run={activeRun} onDismiss={() => setActiveRun(null)} />
