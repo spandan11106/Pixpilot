@@ -1,52 +1,42 @@
+"use client";
+
 import "./dashboard.css";
+import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import { KpiGrid } from "./KpiGrid";
-import { ThroughputChart, CapacityGauge } from "./Charts";
-import { ActiveJob } from "./ActiveJob";
-import { RecentGenerations } from "./RecentGenerations";
-import { RenderQueue } from "./RenderQueue";
-import { ActivityFeed } from "./ActivityFeed";
-import { RefreshIcon, GridIcon } from "./icons";
+import { EmptyState } from "./EmptyState";
+import { RunView } from "./RunView";
+import { NewGenerationModal, type RunMeta } from "./NewGenerationModal";
 
 export function Dashboard() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [activeRun, setActiveRun] = useState<RunMeta | null>(null);
+
   return (
     <div className="pp-dash">
       <div className="app">
         <Sidebar />
         <div className="main">
-          <Topbar />
+          <Topbar onNewGeneration={() => setModalOpen(true)} />
           <main className="content">
-            <div className="page-head">
-              <div>
-                <h1 className="display-l">Image Generation Pipeline</h1>
-                <p>Real-time view of jobs moving through prompt, queue, render, and post-processing.</p>
-              </div>
-              <div style={{ display: "flex", gap: "var(--space-3)" }}>
-                <button className="btn btn-ghost"><RefreshIcon /> Refresh</button>
-                <button className="btn btn-secondary"><GridIcon /> Manage Queue</button>
-              </div>
-            </div>
-
-            <KpiGrid />
-
-            <section className="charts">
-              <ThroughputChart />
-              <CapacityGauge />
-            </section>
-
-            <ActiveJob />
-
-            <div className="cols">
-              <RecentGenerations />
-              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
-                <RenderQueue />
-                <ActivityFeed />
-              </div>
-            </div>
+            {activeRun ? (
+              <RunView run={activeRun} onDismiss={() => setActiveRun(null)} />
+            ) : (
+              <EmptyState onNewGeneration={() => setModalOpen(true)} />
+            )}
           </main>
         </div>
       </div>
+
+      {modalOpen && (
+        <NewGenerationModal
+          onClose={() => setModalOpen(false)}
+          onRunStart={(meta) => {
+            setActiveRun(meta);
+            setModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
