@@ -799,11 +799,11 @@ All downstream milestones depend on completing the Image Designer Agent, FLUX in
 - [x] Build Vision Agent (model-flexible: OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet, Google Gemini 2.0): processes product image, reference image, 3D renders, and video frames into `product_profile` JSON with fallback chain and human-in-the-loop checkpoint on failure.
 - [x] Build Summarizer Agent (Claude Haiku): merges product profile + description fields into Input Summary Card.
 - [x] Build Image Gen Prompt construction: converts product profile + description + steering parameters directly into FLUX-ready prompts (no separate agent in v0.5; embedded in Image Designer Agent).
-- [ ] Display Input Summary Card on dashboard (backend complete; frontend display missing).
+- [x] Display Input Summary Card on dashboard — rendered inline in the live event log when `summary_complete` fires; full card (product name, category, features, audience, colors, materials, style vibe, vision badge) shown with color swatches and structured layout.
 - [x] Write `product_profile` to `run_metadata.json` under `agent_states.product_profile`.
 - [x] Write summary card to pipeline state for display at checkpoint.
 
-**Deliverable:** User uploads product image + description; Vision Agent analyzes media with fallback between three models; Summarizer Agent produces Input Summary Card; Image Gen Prompt construction is embedded in Image Designer Agent. ✓ **MOSTLY COMPLETE** — backend agents wired into graph; frontend display of summary card and image generation interface needed.
+**Deliverable:** User uploads product image + description; Vision Agent analyzes media with fallback between three models; Summarizer Agent produces Input Summary Card displayed inline in live event log; Image Gen Prompt construction is embedded in Image Designer Agent. ✓ **COMPLETE** — all backend agents wired; Input Summary Card displayed in frontend; image generation interface is Milestone 2.
 
 ---
 
@@ -870,8 +870,8 @@ Weeks  7– 8 │ ██████ Milestone 3: Final Review Deck + Beta Relea
 
 ## Where to Start
 
-1. **Complete Milestone 1 (Ingestion + Vision).** Backend already has these agents wired. Frontend needs display of the image generation interface.
-2. **Build Milestone 2 (Image Generation).** This is the core feature:
+1. **Milestone 1 (Ingestion + Vision + Summarizer) is complete.** All backend agents wired; Input Summary Card displayed in frontend.
+2. **Build Milestone 2 (Image Generation).** This is the core feature and critical path:
    - Image Designer Agent: constructs FLUX prompts from product profile + steering params.
    - FLUX Dev integration: async polling with content moderation.
    - Refinement Agent: rewrites prompts from user feedback.
