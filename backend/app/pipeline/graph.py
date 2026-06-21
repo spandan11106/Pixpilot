@@ -19,11 +19,17 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
 
 from app.core.run_manager import run_manager
 from app.core.settings import settings
+from app.pipeline.agents.image_designer import (
+    ImageGenerationError,
+    build_flux_prompt,
+    generate_image,
+)
 from app.pipeline.agents.summary_agent import generate_image_prompt, generate_summary_card
 from app.pipeline.agents.vision_orchestrator import get_orchestrator
 from app.pipeline.processors import (
@@ -41,6 +47,7 @@ class PipelineState(TypedDict):
     events: list[dict]
     results: dict
     failed: bool
+    image_generation_skipped: bool
 
 
 def _emit(state: PipelineState, event: str, data: dict, **updates: Any) -> dict:
@@ -336,6 +343,93 @@ async def summary_agent_node(state: PipelineState) -> dict:
     )
 
 
+def image_designer_start_node(state: PipelineState) -> dict:
+    """Validate blueprint presence and emit the started event (instant, non-blocking)."""
+    creative_blueprint = state["results"].get("creative_blueprint")
+    if not creative_blueprint:
+        return _emit(
+            state,
+            "image_generation_skipped",
+            {"reason": "No creative blueprint — summary agent may have failed"},
+            image_generation_skipped=True,
+        )
+    return _emit(
+        state,
+        "image_generation_started",
+        {"model": settings.fal_image_model},
+        image_generation_skipped=False,
+    )
+
+
+async def image_designer_node(state: PipelineState) -> dict:
+    """Call fal.ai FLUX, download the output image, save to disk."""
+    run_id = state["run_id"]
+    creative_blueprint = state["results"]["creative_blueprint"]
+    image_payload = state["results"]["image"]["image_payload"]
+
+    prompt = build_flux_prompt(creative_blueprint)
+    aspect_ratio = creative_blueprint.get("aspect_ratio", "1:1")
+    negative_prompts = creative_blueprint.get("negative_prompts", "")
+
+    try:
+        fal_result = await generate_image(
+            prompt=prompt,
+            image_data_uri=image_payload,
+            aspect_ratio=aspect_ratio,
+            negative_prompts=negative_prompts,
+        )
+    except ImageGenerationError as e:
+        run_manager.update_metadata(run_id, {"status": "failed"})
+        return _emit(
+            state,
+            "image_generation_failed",
+            {"error": str(e), "retries": 2},
+            failed=True,
+        )
+
+    output_path = run_manager.get_content_dir() / run_id / "v1.png"
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.get(fal_result["image_url"])
+            resp.raise_for_status()
+            output_path.write_bytes(resp.content)
+    except Exception as e:
+        run_manager.update_metadata(run_id, {"status": "failed"})
+        return _emit(
+            state,
+            "image_generation_failed",
+            {"error": f"Failed to save generated image: {e}", "retries": 2},
+            failed=True,
+        )
+
+    iteration_entry = {
+        "iteration": 1,
+        "prompt": prompt,
+        "seed": fal_result.get("seed"),
+        "output_path": "v1.png",
+        "feedback": None,
+    }
+    run_manager.update_metadata(
+        run_id,
+        {"status": "image_generated", "image_iterations": [iteration_entry]},
+    )
+
+    image_url = f"/api/runs/{run_id}/images/v1.png"
+    results = {**state["results"], "image_generation": fal_result}
+    return _emit(
+        state,
+        "image_generation_complete",
+        {
+            "iteration": 1,
+            "image_path": "v1.png",
+            "image_url": image_url,
+            "prompt_used": prompt,
+            "seed": fal_result.get("seed"),
+        },
+        results=results,
+    )
+
+
 def complete_node(state: PipelineState) -> dict:
     return _emit(
         state,
@@ -346,6 +440,14 @@ def complete_node(state: PipelineState) -> dict:
 
 def _route_after_image(state: PipelineState) -> str:
     return END if state["failed"] else "process_reference"
+
+
+def _route_after_image_designer_start(state: PipelineState) -> str:
+    return "complete" if state["image_generation_skipped"] else "image_designer"
+
+
+def _route_after_image_designer(state: PipelineState) -> str:
+    return END if state["failed"] else "complete"
 
 
 def build_graph():
@@ -359,20 +461,34 @@ def build_graph():
     builder.add_node("finalize", finalize_node)
     builder.add_node("vision_analysis", vision_analysis_node)
     builder.add_node("summary_agent", summary_agent_node)
+    builder.add_node("image_designer_start", image_designer_start_node)
+    builder.add_node("image_designer", image_designer_node)
     builder.add_node("complete", complete_node)
 
     builder.set_entry_point("start")
     builder.add_edge("start", "process_text")
     builder.add_edge("process_text", "process_image")
     builder.add_conditional_edges(
-        "process_image", _route_after_image, {"process_reference": "process_reference", END: END}
+        "process_image",
+        _route_after_image,
+        {"process_reference": "process_reference", END: END},
     )
     builder.add_edge("process_reference", "process_video")
     builder.add_edge("process_video", "process_model")
     builder.add_edge("process_model", "finalize")
     builder.add_edge("finalize", "vision_analysis")
     builder.add_edge("vision_analysis", "summary_agent")
-    builder.add_edge("summary_agent", "complete")
+    builder.add_edge("summary_agent", "image_designer_start")
+    builder.add_conditional_edges(
+        "image_designer_start",
+        _route_after_image_designer_start,
+        {"image_designer": "image_designer", "complete": "complete"},
+    )
+    builder.add_conditional_edges(
+        "image_designer",
+        _route_after_image_designer,
+        {"complete": "complete", END: END},
+    )
     builder.add_edge("complete", END)
     return builder.compile()
 
@@ -382,7 +498,13 @@ pipeline = build_graph()
 
 async def run_pipeline(run_id: str) -> AsyncGenerator[dict, None]:
     """Execute the pipeline and yield SSE events as each node emits them."""
-    state: PipelineState = {"run_id": run_id, "events": [], "results": {}, "failed": False}
+    state: PipelineState = {
+        "run_id": run_id,
+        "events": [],
+        "results": {},
+        "failed": False,
+        "image_generation_skipped": False,
+    }
     async for chunk in pipeline.astream(state, stream_mode="updates"):
         for node_update in chunk.values():
             new_events = node_update.get("events", [])
