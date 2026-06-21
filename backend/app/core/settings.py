@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     summary_model: str = "claude-haiku-4-5-20251001"
     prompt_model: str = "claude-sonnet-4-6"
 
+    # Image generation
+    fal_image_model: str = "fal-ai/flux/dev/image-to-image"
+
     # Sidecar URLs
     ffmpeg_sidecar_url: str = "http://ffmpeg:8001"
     renderer_sidecar_url: str = "http://renderer:8002"

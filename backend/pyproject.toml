@@ -18,6 +18,7 @@ dependencies = [
     "anthropic>=0.25.0",
     "google-genai>=2.0.0",
     "python-dotenv>=1.0.0",
+    "fal-client>=0.15.0",
 ]
 
 [project.optional-dependencies]
