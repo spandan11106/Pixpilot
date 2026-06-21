@@ -157,3 +157,32 @@ async def test_generate_image_no_fal_key_raises():
                 aspect_ratio="1:1",
                 negative_prompts="",
             )
+
+
+@pytest.mark.asyncio
+async def test_rewrite_prompt_returns_revised_string():
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="revised prompt with darker background")]
+    mock_client = MagicMock()
+    mock_client.messages.create = AsyncMock(return_value=mock_response)
+
+    with patch("anthropic.AsyncAnthropic", return_value=mock_client), \
+         patch.object(settings, "anthropic_api_key", "test-key"):
+        from app.pipeline.agents.image_designer import rewrite_prompt
+        result = await rewrite_prompt(
+            original_prompt="luxury serum on marble with soft lighting",
+            feedback="make background darker and add rim lighting",
+            product_profile={"product_name": "Serum X", "product_category": "skincare"},
+        )
+
+    assert isinstance(result, str)
+    assert len(result) > 5
+    mock_client.messages.create.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_rewrite_prompt_raises_if_no_anthropic_key():
+    with patch.object(settings, "anthropic_api_key", ""):
+        from app.pipeline.agents.image_designer import rewrite_prompt
+        with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+            await rewrite_prompt("prompt", "feedback", {})

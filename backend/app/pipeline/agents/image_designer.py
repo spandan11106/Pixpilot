@@ -124,3 +124,41 @@ def build_flux_prompt(blueprint: dict[str, Any]) -> str:
     if blueprint.get("lighting_preset"):
         prompt += f" Lighting preset: {blueprint['lighting_preset']}."
     return prompt.strip()
+
+
+_REFINEMENT_SYSTEM_PROMPT = """You are a creative director revising AI image generation prompts.
+You receive an original prompt, user feedback requesting a change, and a product description.
+
+Rules:
+- Incorporate the user's requested change into the prompt.
+- Remove any tokens that contradict the requested change.
+- Preserve all product-description tokens: physical shape, label text, geometry, materials.
+- Return ONLY the revised prompt string — no explanation, no preamble, no JSON."""
+
+
+async def rewrite_prompt(
+    original_prompt: str,
+    feedback: str,
+    product_profile: dict[str, Any],
+) -> str:
+    """Rewrite a FLUX prompt based on user feedback using Claude Sonnet."""
+    if not settings.anthropic_api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
+
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    model = settings.prompt_model or DEFAULT_REFINEMENT_MODEL
+
+    user_message = (
+        f"Original prompt:\n{original_prompt}\n\n"
+        f"User feedback: {feedback}\n\n"
+        f"Product: {product_profile.get('product_name', '')} — "
+        f"{product_profile.get('product_category', '')}"
+    )
+
+    response = await client.messages.create(
+        model=model,
+        max_tokens=500,
+        system=_REFINEMENT_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
+    )
+    return response.content[0].text.strip()
