@@ -147,8 +147,9 @@ async def test_generate_image_raises_if_no_images():
 
 @pytest.mark.asyncio
 async def test_generate_image_no_fal_key_raises():
-    with patch.object(settings, "fal_api_key", ""):
-        os.environ.pop("FAL_KEY", None)
+    env_without_fal = {k: v for k, v in os.environ.items() if k != "FAL_KEY"}
+    with patch.object(settings, "fal_api_key", ""), \
+         patch.dict(os.environ, env_without_fal, clear=True):
         with pytest.raises(ImageGenerationError, match="FAL_KEY"):
             await generate_image(
                 prompt="test",
