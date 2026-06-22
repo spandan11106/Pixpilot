@@ -7,9 +7,9 @@ import pytest
 
 
 SAMPLE_TEXT_RESULTS = {
-    "product": {"text": "Organic cold-pressed argan oil, 30ml amber dropper bottle. Anti-aging, moisturising."},
-    "audience": {"text": "Women aged 28–45 interested in natural skincare and clean beauty."},
-    "colors": {"text": "Soft pastel pinks, warm cream tones, and matte gold accents."},
+    "product": {"content": "Organic cold-pressed argan oil, 30ml amber dropper bottle. Anti-aging, moisturising."},
+    "audience": {"content": "Women aged 28–45 interested in natural skincare and clean beauty."},
+    "colors": {"content": "Soft pastel pinks, warm cream tones, and matte gold accents."},
 }
 
 SAMPLE_PROFILE = {

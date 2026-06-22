@@ -195,3 +195,55 @@ def test_patch_settings_unknown_field_rejected(client: TestClient):
     """Sending an unknown field should be rejected (extra='forbid')."""
     response = client.patch("/api/settings", json={"unknown_field": "value"})
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# PATCH runtime effects: os.environ and orchestrator reset
+# ---------------------------------------------------------------------------
+
+
+def test_patch_settings_updates_os_environ(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+):
+    """PATCH must write the new value into os.environ so reloaded Settings picks it up."""
+    import os
+
+    new_key = "sk-environ-test-abcdefgh"
+
+    # Register the key with monkeypatch so any writes are reverted after the test.
+    monkeypatch.setenv("OPENAI_API_KEY", "__sentinel__")
+
+    with patch("app.api.routes.settings.set_key"):
+        client.patch("/api/settings", json={"openai_api_key": new_key})
+
+    assert os.environ.get("OPENAI_API_KEY") == new_key
+
+
+def test_patch_settings_resets_orchestrator_singleton(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+):
+    """PATCH must clear the cached VisionOrchestrator so the next get_orchestrator()
+    constructs a fresh instance from the updated settings."""
+    import app.pipeline.agents.vision_orchestrator as vo_module
+
+    # Isolate the in-place settings mutation so it doesn't leak into later tests.
+    # monkeypatch.setattr restores the original value at teardown.
+    monkeypatch.setattr(settings, "openai_vision_model", settings.openai_vision_model)
+    # Also prevent os.environ leakage from the patch_settings write.
+    monkeypatch.setenv("OPENAI_VISION_MODEL", settings.openai_vision_model)
+
+    # Prime the singleton so it is non-None before the PATCH
+    _ = vo_module.get_orchestrator()
+    assert vo_module._orchestrator is not None
+
+    with patch("app.api.routes.settings.set_key"):
+        response = client.patch("/api/settings", json={"openai_vision_model": "gpt-4o-mini"})
+
+    assert response.status_code == 200
+    # After PATCH the singleton must have been cleared
+    assert vo_module._orchestrator is None
+
+    # get_orchestrator() should rebuild it on next call
+    rebuilt = vo_module.get_orchestrator()
+    assert rebuilt is not None
+    assert vo_module._orchestrator is rebuilt

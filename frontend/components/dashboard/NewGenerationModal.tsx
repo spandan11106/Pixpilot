@@ -235,7 +235,7 @@ export function NewGenerationModal({
               </div>
               <div className="field">
                 <span className="field-label">3D Model</span>
-                <Dropzone fileType="model_3d" accept=".gltf,.obj,.usdz" title="3D Model" sub="GLTF · OBJ · USDZ · ≤50MB"
+                <Dropzone fileType="model_3d" accept=".gltf,.glb,.obj,.zip" title="3D Model" sub="GLTF · GLB · OBJ · ZIP · ≤50MB"
                   preview="views" icon="cube" maxMB={50} promptIcon={<CubeIcon />} onToken={setModel3dToken}
                   onStatus={setAssetStatus("model_3d")} onZoom={setZoom} />
               </div>

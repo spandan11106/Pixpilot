@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,8 @@ async def get_settings() -> dict[str, str]:
 
 @router.patch("")
 async def patch_settings(body: SettingsPatch) -> dict[str, Any]:
+    from app.pipeline.agents.vision_orchestrator import reset_orchestrator
+
     raw_path = settings.model_config.get("env_file", ".env")
     dotenv_path = Path(raw_path).resolve()
 
@@ -86,10 +89,15 @@ async def patch_settings(body: SettingsPatch) -> dict[str, Any]:
     for field, value in updates.items():
         env_key = _FIELD_TO_ENV[field]
         set_key(dotenv_path, env_key, value)
+        os.environ[env_key] = value
 
     # Reload the singleton in-place so all routes see the new values
     fresh = Settings()
     for attr in Settings.model_fields:
         object.__setattr__(settings, attr, getattr(fresh, attr))
+
+    # Reset the cached vision orchestrator so the next pipeline run rebuilds it
+    # from the newly updated settings (keys and model names).
+    reset_orchestrator()
 
     return {"status": "ok"}

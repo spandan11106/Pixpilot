@@ -47,9 +47,6 @@ class ReviseRequest(BaseModel):
 async def revise_image(run_id: str, body: ReviseRequest) -> dict:
     run_dir = _validate_run_dir(run_id)
 
-    if body.iteration >= MAX_ITERATIONS:
-        raise HTTPException(status_code=400, detail="max_iterations_reached")
-
     try:
         metadata = run_manager.get_metadata(run_id)
     except FileNotFoundError:
@@ -58,6 +55,10 @@ async def revise_image(run_id: str, body: ReviseRequest) -> dict:
     image_iterations = metadata.get("image_iterations", [])
     if not image_iterations:
         raise HTTPException(status_code=400, detail="No image iterations found for this run.")
+
+    current_iteration = image_iterations[-1]["iteration"]
+    if current_iteration >= MAX_ITERATIONS:
+        raise HTTPException(status_code=400, detail="max_iterations_reached")
 
     last_prompt = image_iterations[-1]["prompt"]
     product_profile = metadata.get("agent_states", {}).get("product_profile") or {}
@@ -91,7 +92,7 @@ async def revise_image(run_id: str, body: ReviseRequest) -> dict:
         logger.error(f"Image generation failed for run {run_id} revision: {e}")
         raise HTTPException(status_code=500, detail=f"Image generation error: {e}") from e
 
-    new_iteration = body.iteration + 1
+    new_iteration = current_iteration + 1
     output_filename = f"v{new_iteration}.png"
     output_path = run_dir / output_filename
 

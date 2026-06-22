@@ -77,9 +77,9 @@ async def generate_summary_card(
     prompt = f"""You are a product analyst. Merge the following inputs into a concise, structured product summary.
 
 ## User Description
-- Product Info: {text_results.get('product', {}).get('text', '')}
-- Target Audience: {text_results.get('audience', {}).get('text', '')}
-- Desired Colors: {text_results.get('colors', {}).get('text', '')}
+- Product Info: {text_results.get('product', {}).get('content', '')}
+- Target Audience: {text_results.get('audience', {}).get('content', '')}
+- Desired Colors: {text_results.get('colors', {}).get('content', '')}
 
 ## Vision Analysis
 {vision_section}
@@ -112,7 +112,9 @@ Return ONLY valid JSON, no additional text."""
             raise
 
     text = response.content[0].text
-    return _parse_json(text, "summary card")
+    card = _parse_json(text, "summary card")
+    card["vision_available"] = product_profile is not None
+    return card
 
 
 async def generate_image_prompt(

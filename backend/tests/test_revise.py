@@ -62,6 +62,13 @@ async def test_revise_returns_updated_image(tmp_content_dir, client):
 
 async def test_revise_max_iterations_returns_400(tmp_content_dir, client):
     rid = _setup_run(tmp_content_dir)
+    # Overwrite metadata so the persisted last iteration is at MAX_ITERATIONS (10)
+    run_manager.update_metadata(rid, {
+        "image_iterations": [{
+            "iteration": 10, "prompt": "final prompt",
+            "seed": 1, "output_path": "v10.png", "feedback": None,
+        }],
+    })
     resp = client.post(f"/api/runs/{rid}/revise",
                        json={"feedback": "change something", "iteration": 10})
     assert resp.status_code == 400

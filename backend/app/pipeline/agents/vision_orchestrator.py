@@ -82,4 +82,10 @@ def get_orchestrator() -> VisionOrchestrator:
     return _orchestrator
 
 
+def reset_orchestrator() -> None:
+    """Clear the cached orchestrator so the next call to get_orchestrator() rebuilds it."""
+    global _orchestrator
+    _orchestrator = None
+
+
 orchestrator = get_orchestrator

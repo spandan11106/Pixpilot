@@ -7,16 +7,16 @@ import { type RunMeta } from "./NewGenerationModal";
 import { CheckIcon, XIcon } from "./icons";
 import { ImageWorkspace } from "./ImageWorkspace";
 
-const PIPELINE_STAGES: { key: string; name: string; label: string }[] = [
-  { key: "text_processed",            name: "Text",       label: "1" },
-  { key: "image_processed",           name: "Image",      label: "2" },
-  { key: "video_processed",           name: "Media",      label: "3" },
-  { key: "model_processed",           name: "3D Model",   label: "4" },
-  { key: "ingestion_complete",        name: "Ingestion",  label: "5" },
-  { key: "vision_analyzed",           name: "Vision",     label: "6" },
-  { key: "summary_complete",          name: "Summary",    label: "7" },
-  { key: "image_generation_started",  name: "Generating", label: "8" },
-  { key: "image_generation_complete", name: "Done",       label: "9" },
+const PIPELINE_STAGES: { keys: string[]; name: string; label: string }[] = [
+  { keys: ["text_processed"],                                              name: "Text",       label: "1" },
+  { keys: ["image_processed"],                                             name: "Image",      label: "2" },
+  { keys: ["video_processed", "video_skipped", "video_failed"],            name: "Media",      label: "3" },
+  { keys: ["model_processed", "model_skipped", "model_failed"],            name: "3D Model",   label: "4" },
+  { keys: ["ingestion_complete"],                                          name: "Ingestion",  label: "5" },
+  { keys: ["vision_analyzed", "vision_analysis_skipped", "vision_analysis_failed"],  name: "Vision",     label: "6" },
+  { keys: ["summary_complete", "summary_failed", "image_prompt_failed"],  name: "Summary",    label: "7" },
+  { keys: ["image_generation_started", "image_generation_skipped"],       name: "Generating", label: "8" },
+  { keys: ["image_generation_complete"],                                   name: "Done",       label: "9" },
 ];
 
 const MODE_LABELS: Record<string, string> = {
@@ -27,11 +27,15 @@ const MODE_LABELS: Record<string, string> = {
   summarize: "Summarization",
 };
 
+function stageDone(s: (typeof PIPELINE_STAGES)[number], seenEvents: Set<string>): boolean {
+  return s.keys.some((k) => seenEvents.has(k));
+}
+
 function deriveStages(seenEvents: Set<string>): Stage[] {
   let foundActive = false;
   return PIPELINE_STAGES.map((s, i) => {
-    if (seenEvents.has(s.key)) return { name: s.name, meta: "done", state: "done" as const };
-    const prevDone = i === 0 || seenEvents.has(PIPELINE_STAGES[i - 1].key);
+    if (stageDone(s, seenEvents)) return { name: s.name, meta: "done", state: "done" as const };
+    const prevDone = i === 0 || stageDone(PIPELINE_STAGES[i - 1], seenEvents);
     if (!foundActive && prevDone) {
       foundActive = true;
       return { name: s.name, meta: "in progress", state: "active" as const, label: s.label };
