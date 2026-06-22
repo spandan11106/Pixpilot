@@ -76,6 +76,16 @@ async def test_revise_run_not_found_returns_404(tmp_content_dir, client):
     assert resp.status_code == 404
 
 
+async def test_revise_missing_metadata_returns_404(tmp_content_dir, client):
+    rid = run_manager.create_run()
+    # Delete the metadata file so the directory exists but metadata is missing
+    metadata_path = tmp_content_dir / rid / "run_metadata.json"
+    metadata_path.unlink()
+    resp = client.post(f"/api/runs/{rid}/revise",
+                       json={"feedback": "test", "iteration": 1})
+    assert resp.status_code == 404
+
+
 async def test_revise_refinement_failure_returns_500(tmp_content_dir, client):
     rid = _setup_run(tmp_content_dir)
     with patch("app.api.routes.revise.rewrite_prompt",

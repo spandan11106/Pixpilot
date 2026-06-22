@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from app.core.run_manager import run_manager
 from app.core.settings import settings
-from app.pipeline.agents.image_designer import ImageGenerationError, generate_image, rewrite_prompt
+from app.pipeline.agents.image_designer import generate_image, rewrite_prompt
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/runs", tags=["revise"])
@@ -50,8 +50,9 @@ async def revise_image(run_id: str, body: ReviseRequest) -> dict:
     if body.iteration >= MAX_ITERATIONS:
         raise HTTPException(status_code=400, detail="max_iterations_reached")
 
-    metadata = run_manager.get_metadata(run_id)
-    if metadata is None:
+    try:
+        metadata = run_manager.get_metadata(run_id)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Run not found.")
 
     image_iterations = metadata.get("image_iterations", [])
@@ -86,7 +87,7 @@ async def revise_image(run_id: str, body: ReviseRequest) -> dict:
             aspect_ratio=aspect_ratio,
             negative_prompts=negative_prompts,
         )
-    except (ImageGenerationError, Exception) as e:
+    except Exception as e:
         logger.error(f"Image generation failed for run {run_id} revision: {e}")
         raise HTTPException(status_code=500, detail=f"Image generation error: {e}") from e
 

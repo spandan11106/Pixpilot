@@ -7,8 +7,6 @@ interface Props {
   runId: string;
   initialImageUrl: string;
   initialIteration: number;
-  initialPrompt: string;
-  initialSeed: number | null;
 }
 
 type Status = "idle" | "submitting" | "error";
@@ -97,9 +95,15 @@ export function ImageWorkspace({
           Image downloaded — run complete.
         </div>
       ) : maxReached ? (
-        <p className="image-workspace-max">
-          Maximum revisions reached — approve the image above or start a new run.
-        </p>
+        <div className="image-workspace-max">
+          <p>Maximum revisions reached — approve the current image or start a new run.</p>
+          <button
+            className="btn btn-default btn-sm"
+            onClick={() => void handleApprove()}
+          >
+            Approve &amp; Download
+          </button>
+        </div>
       ) : (
         <div className="image-workspace-form">
           <label className="image-workspace-label">What would you like to change?</label>

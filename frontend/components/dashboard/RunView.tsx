@@ -211,8 +211,6 @@ export function RunView({ run, onDismiss }: { run: RunMeta; onDismiss: () => voi
                       runId={run.runId}
                       initialImageUrl={imageData.image_url}
                       initialIteration={imageData.iteration}
-                      initialPrompt={imageData.prompt_used}
-                      initialSeed={imageData.seed}
                     />
                   </div>
                 );
