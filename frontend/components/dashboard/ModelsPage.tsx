@@ -1,23 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { SectionHead } from "./models/SectionHead";
+import { ProviderCard } from "./models/ProviderCard";
+import { TaskModelTable, type TaskProvider, type TaskProviderDef } from "./models/TaskModelTable";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -26,149 +12,148 @@ interface SettingsData {
   anthropic_api_key: string;
   google_api_key: string;
   fal_api_key: string;
-  serpapi_api_key: string;
+  // Vision Analysis
   openai_vision_model: string;
   anthropic_vision_model: string;
   google_vision_model: string;
-  summary_model: string;
-  prompt_model: string;
   vision_priority: string;
+  // Summary
+  openai_summary_model: string;
+  anthropic_summary_model: string;
+  google_summary_model: string;
+  summary_priority: string;
+  // Image Prompt
+  openai_prompt_model: string;
+  anthropic_prompt_model: string;
+  google_prompt_model: string;
+  prompt_priority: string;
+  // Image Generation
+  fal_image_model: string;
+  openai_image_model: string;
+  image_gen_priority: string;
 }
-
-type VisionProvider = "openai" | "anthropic" | "google";
-
-const PROVIDER_DISPLAY: Record<VisionProvider, string> = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  google: "Google",
-};
-
-// --- Sortable Item ---
-
-interface SortableItemProps {
-  id: string;
-  index: number;
-  label: string;
-}
-
-function SortableItem({ id, index, label }: SortableItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "12px 16px",
-    background: "var(--card)",
-    border: "1px solid var(--border)",
-    borderRadius: 6,
-    marginBottom: 8,
-    userSelect: "none",
-    cursor: isDragging ? "grabbing" : "grab",
-    zIndex: isDragging ? 10 : undefined,
-    position: "relative",
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {/* Drag handle */}
-      <span
-        style={{
-          color: "var(--muted-fg)",
-          fontSize: 18,
-          lineHeight: 1,
-          cursor: "grab",
-          flexShrink: 0,
-        }}
-        aria-hidden="true"
-      >
-        ⠿
-      </span>
-
-      {/* Provider name */}
-      <span style={{ flex: 1, fontWeight: 500, fontSize: 14, color: "var(--fg)" }}>
-        {label}
-      </span>
-
-      {/* Position badge */}
-      <span
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: "50%",
-          background: "var(--primary)",
-          color: "var(--surface)",
-          fontSize: 11,
-          fontWeight: 700,
-          display: "grid",
-          placeItems: "center",
-          flexShrink: 0,
-        }}
-      >
-        {index + 1}
-      </span>
-    </div>
-  );
-}
-
-// --- API Key row dirty-state tracking ---
 
 interface KeyState {
   value: string;
   dirty: boolean;
-  saved: boolean;
 }
 
-function makeKeyState(value: string): KeyState {
-  return { value, dirty: false, saved: false };
+function makeKey(value: string): KeyState {
+  return { value, dirty: false };
 }
 
-// --- Main Component ---
+const ALL_PROVIDERS: Array<{
+  id: string;
+  name: string;
+  role: string;
+  initials: string;
+  bg: string;
+  color: string;
+  keyField: string;
+}> = [
+  {
+    id: "openai",
+    name: "OpenAI",
+    role: "GPT vision & reasoning",
+    initials: "OA",
+    bg: "rgba(var(--green-rgb),0.18)",
+    color: "var(--green)",
+    keyField: "openai_api_key",
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    role: "Claude vision & text",
+    initials: "AN",
+    bg: "rgba(var(--accent2-rgb),0.2)",
+    color: "var(--accent-2)",
+    keyField: "anthropic_api_key",
+  },
+  {
+    id: "google",
+    name: "Google",
+    role: "Gemini multimodal",
+    initials: "GG",
+    bg: "rgba(var(--primary-rgb),0.18)",
+    color: "var(--primary)",
+    keyField: "google_api_key",
+  },
+  {
+    id: "fal",
+    name: "Fal",
+    role: "Image generation via FLUX",
+    initials: "FL",
+    bg: "rgba(var(--secondary-rgb),0.18)",
+    color: "var(--secondary)",
+    keyField: "fal_api_key",
+  },
+];
+
+const VISION_PROVIDERS: TaskProviderDef[] = [
+  { id: "openai",    name: "OpenAI",    initials: "OA", bg: "rgba(var(--green-rgb),0.18)",    color: "var(--green)",     modelField: "openai_vision_model",    placeholder: "e.g. gpt-4o" },
+  { id: "anthropic", name: "Anthropic", initials: "AN", bg: "rgba(var(--accent2-rgb),0.2)",   color: "var(--accent-2)",  modelField: "anthropic_vision_model", placeholder: "e.g. claude-sonnet-4-6" },
+  { id: "google",    name: "Google",    initials: "GG", bg: "rgba(var(--primary-rgb),0.18)",  color: "var(--primary)",   modelField: "google_vision_model",    placeholder: "e.g. gemini-2.0-flash" },
+];
+
+const SUMMARY_PROVIDERS: TaskProviderDef[] = [
+  { id: "openai",    name: "OpenAI",    initials: "OA", bg: "rgba(var(--green-rgb),0.18)",    color: "var(--green)",     modelField: "openai_summary_model",    placeholder: "e.g. gpt-4o-mini" },
+  { id: "anthropic", name: "Anthropic", initials: "AN", bg: "rgba(var(--accent2-rgb),0.2)",   color: "var(--accent-2)",  modelField: "anthropic_summary_model", placeholder: "e.g. claude-haiku-4-5-20251001" },
+  { id: "google",    name: "Google",    initials: "GG", bg: "rgba(var(--primary-rgb),0.18)",  color: "var(--primary)",   modelField: "google_summary_model",    placeholder: "e.g. gemini-2.0-flash" },
+];
+
+const PROMPT_PROVIDERS: TaskProviderDef[] = [
+  { id: "openai",    name: "OpenAI",    initials: "OA", bg: "rgba(var(--green-rgb),0.18)",    color: "var(--green)",     modelField: "openai_prompt_model",    placeholder: "e.g. gpt-4o" },
+  { id: "anthropic", name: "Anthropic", initials: "AN", bg: "rgba(var(--accent2-rgb),0.2)",   color: "var(--accent-2)",  modelField: "anthropic_prompt_model", placeholder: "e.g. claude-sonnet-4-6" },
+  { id: "google",    name: "Google",    initials: "GG", bg: "rgba(var(--primary-rgb),0.18)",  color: "var(--primary)",   modelField: "google_prompt_model",    placeholder: "e.g. gemini-2.0-flash" },
+];
+
+const DEFAULT_ORDER: TaskProvider[] = ["openai", "anthropic", "google"];
+const DEFAULT_IMAGE_GEN_ORDER: TaskProvider[] = ["fal", "openai"];
+
+const IMAGE_GEN_PROVIDERS: TaskProviderDef[] = [
+  { id: "fal",    name: "fal.ai",  initials: "FL", bg: "rgba(var(--secondary-rgb),0.18)", color: "var(--secondary)", modelField: "fal_image_model",    placeholder: "e.g. fal-ai/flux/dev/image-to-image" },
+  { id: "openai", name: "OpenAI",  initials: "OA", bg: "rgba(var(--green-rgb),0.18)",    color: "var(--green)",     modelField: "openai_image_model",  placeholder: "e.g. dall-e-3" },
+];
+
+function parseOrder(raw: string, valid: string[], expectedLen: number): TaskProvider[] | null {
+  const parsed = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => valid.includes(s));
+  return parsed.length === expectedLen ? parsed : null;
+}
 
 export function ModelsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // API Keys
   const [keys, setKeys] = useState<Record<string, KeyState>>({
-    openai_api_key: makeKeyState(""),
-    anthropic_api_key: makeKeyState(""),
-    google_api_key: makeKeyState(""),
-    fal_api_key: makeKeyState(""),
-    serpapi_api_key: makeKeyState(""),
+    openai_api_key: makeKey(""),
+    anthropic_api_key: makeKey(""),
+    google_api_key: makeKey(""),
+    fal_api_key: makeKey(""),
   });
 
-  // Models
   const [models, setModels] = useState<Record<string, string>>({
     openai_vision_model: "",
     anthropic_vision_model: "",
     google_vision_model: "",
-    summary_model: "",
-    prompt_model: "",
+    openai_summary_model: "",
+    anthropic_summary_model: "",
+    google_summary_model: "",
+    openai_prompt_model: "",
+    anthropic_prompt_model: "",
+    google_prompt_model: "",
+    fal_image_model: "",
+    openai_image_model: "",
   });
 
-  // Vision priority order
-  const [visionOrder, setVisionOrder] = useState<VisionProvider[]>([
-    "openai",
-    "anthropic",
-    "google",
-  ]);
-
+  const [visionOrder,   setVisionOrder]   = useState<TaskProvider[]>([...DEFAULT_ORDER]);
+  const [summaryOrder,  setSummaryOrder]  = useState<TaskProvider[]>([...DEFAULT_ORDER]);
+  const [promptOrder,   setPromptOrder]   = useState<TaskProvider[]>([...DEFAULT_ORDER]);
+  const [imageGenOrder, setImageGenOrder] = useState<TaskProvider[]>([...DEFAULT_IMAGE_GEN_ORDER]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // Fetch settings on mount
   useEffect(() => {
     fetch(`${API_URL}/api/settings`)
       .then((r) => {
@@ -177,32 +162,30 @@ export function ModelsPage() {
       })
       .then((data) => {
         setKeys({
-          openai_api_key: makeKeyState(data.openai_api_key ?? ""),
-          anthropic_api_key: makeKeyState(data.anthropic_api_key ?? ""),
-          google_api_key: makeKeyState(data.google_api_key ?? ""),
-          fal_api_key: makeKeyState(data.fal_api_key ?? ""),
-          serpapi_api_key: makeKeyState(data.serpapi_api_key ?? ""),
+          openai_api_key: makeKey(data.openai_api_key ?? ""),
+          anthropic_api_key: makeKey(data.anthropic_api_key ?? ""),
+          google_api_key: makeKey(data.google_api_key ?? ""),
+          fal_api_key: makeKey(data.fal_api_key ?? ""),
         });
         setModels({
-          openai_vision_model: data.openai_vision_model ?? "",
+          openai_vision_model:    data.openai_vision_model    ?? "",
           anthropic_vision_model: data.anthropic_vision_model ?? "",
-          google_vision_model: data.google_vision_model ?? "",
-          summary_model: data.summary_model ?? "",
-          prompt_model: data.prompt_model ?? "",
+          google_vision_model:    data.google_vision_model    ?? "",
+          openai_summary_model:    data.openai_summary_model    ?? "",
+          anthropic_summary_model: data.anthropic_summary_model ?? "",
+          google_summary_model:    data.google_summary_model    ?? "",
+          openai_prompt_model:    data.openai_prompt_model    ?? "",
+          anthropic_prompt_model: data.anthropic_prompt_model ?? "",
+          google_prompt_model:    data.google_prompt_model    ?? "",
+          fal_image_model:   data.fal_image_model   ?? "",
+          openai_image_model: data.openai_image_model ?? "",
         });
-
-        if (data.vision_priority) {
-          const parsed = data.vision_priority
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s): s is VisionProvider =>
-              ["openai", "anthropic", "google"].includes(s)
-            );
-          if (parsed.length === 3) {
-            setVisionOrder(parsed);
-          }
-        }
-
+        const v3 = ["openai", "anthropic", "google"];
+        const v2 = ["fal", "openai"];
+        if (data.vision_priority)    setVisionOrder(parseOrder(data.vision_priority, v3, 3)       ?? DEFAULT_ORDER);
+        if (data.summary_priority)   setSummaryOrder(parseOrder(data.summary_priority, v3, 3)     ?? DEFAULT_ORDER);
+        if (data.prompt_priority)    setPromptOrder(parseOrder(data.prompt_priority, v3, 3)       ?? DEFAULT_ORDER);
+        if (data.image_gen_priority) setImageGenOrder(parseOrder(data.image_gen_priority, v2, 2)  ?? DEFAULT_IMAGE_GEN_ORDER);
         setLoading(false);
       })
       .catch((err) => {
@@ -211,50 +194,37 @@ export function ModelsPage() {
       });
   }, []);
 
-  const handleKeyChange = useCallback(
-    (field: string, value: string) => {
-      setKeys((prev) => ({
-        ...prev,
-        [field]: { value, dirty: true, saved: false },
-      }));
-    },
-    []
-  );
+  const handleKeyChange = useCallback((field: string, value: string) => {
+    setKeys((prev) => ({ ...prev, [field]: { value, dirty: true } }));
+  }, []);
 
   const handleModelChange = useCallback((field: string, value: string) => {
     setModels((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    setVisionOrder((prev) => {
-      const oldIndex = prev.indexOf(active.id as VisionProvider);
-      const newIndex = prev.indexOf(over.id as VisionProvider);
-      return arrayMove(prev, oldIndex, newIndex);
+  const handleDiscard = useCallback(() => {
+    setKeys((prev) => {
+      const next = { ...prev };
+      for (const k of Object.keys(next)) next[k] = { ...next[k], dirty: false };
+      return next;
     });
+    setSaveStatus("idle");
   }, []);
 
   const handleSave = useCallback(async () => {
     setSaveStatus("saving");
+    const body: Partial<Record<string, string>> = {};
 
-    const body: Partial<SettingsData> = {};
-
-    // Only include dirty keys or non-empty model values
     for (const [field, state] of Object.entries(keys)) {
-      if (state.dirty && state.value !== "") {
-        (body as Record<string, string>)[field] = state.value;
-      }
+      if (state.dirty && state.value !== "") body[field] = state.value;
     }
-
     for (const [field, value] of Object.entries(models)) {
-      if (value !== "") {
-        (body as Record<string, string>)[field] = value;
-      }
+      if (value !== "") body[field] = value;
     }
-
-    body.vision_priority = visionOrder.join(",");
+    body.vision_priority    = visionOrder.join(",");
+    body.summary_priority   = summaryOrder.join(",");
+    body.prompt_priority    = promptOrder.join(",");
+    body.image_gen_priority = imageGenOrder.join(",");
 
     try {
       const r = await fetch(`${API_URL}/api/settings`, {
@@ -264,27 +234,17 @@ export function ModelsPage() {
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
 
-      // Mark dirty keys as saved
       setKeys((prev) => {
         const next = { ...prev };
-        for (const field of Object.keys(next)) {
-          if (next[field].dirty) {
-            next[field] = { ...next[field], dirty: false, saved: true };
-          }
-        }
+        for (const k of Object.keys(next)) next[k] = { ...next[k], dirty: false };
         return next;
       });
-
       setSaveStatus("saved");
-
-      // Reset to idle after 3s
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch {
       setSaveStatus("error");
     }
-  }, [keys, models, visionOrder]);
-
-  // --- Render ---
+  }, [keys, models, visionOrder, summaryOrder, promptOrder, imageGenOrder]);
 
   if (loading) {
     return (
@@ -299,183 +259,148 @@ export function ModelsPage() {
     return <div className="gen-page-empty gen-page-error">{loadError}</div>;
   }
 
-  const keyProviders: Array<{
-    label: string;
-    field: string;
-    placeholder: string;
-  }> = [
-    { label: "OpenAI", field: "openai_api_key", placeholder: "sk-…" },
-    { label: "Anthropic", field: "anthropic_api_key", placeholder: "sk-ant-…" },
-    { label: "Google", field: "google_api_key", placeholder: "AIza…" },
-    { label: "Fal", field: "fal_api_key", placeholder: "fal-…" },
-    { label: "SerpAPI", field: "serpapi_api_key", placeholder: "API key…" },
-  ];
-
-  const modelFields: Array<{
-    label: string;
-    field: string;
-    placeholder: string;
-  }> = [
-    { label: "OpenAI Vision Model", field: "openai_vision_model", placeholder: "e.g. gpt-4o" },
-    {
-      label: "Anthropic Vision Model",
-      field: "anthropic_vision_model",
-      placeholder: "e.g. claude-3-5-sonnet-20241022",
-    },
-    {
-      label: "Google Vision Model",
-      field: "google_vision_model",
-      placeholder: "e.g. gemini-2.0-flash",
-    },
-    {
-      label: "Summary Model",
-      field: "summary_model",
-      placeholder: "e.g. claude-haiku-4-5-20251001",
-    },
-    { label: "Prompt Model", field: "prompt_model", placeholder: "e.g. claude-sonnet-4-6" },
-  ];
+  const hasDirty = Object.values(keys).some((k) => k.dirty);
 
   return (
-    <div className="gen-page">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)", flex: 1 }}>
       {/* Page header */}
-      <div className="gen-page-header">
-        <h1 className="heading-2">Models &amp; API Keys</h1>
-      </div>
-
-      {/* Card grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-          gap: 20,
-        }}
-      >
-        {/* Section A — API Keys */}
-        <div className="card" style={{ padding: "20px 24px" }}>
-          <h2 className="heading-3" style={{ marginBottom: 16 }}>
-            API Keys
-          </h2>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {keyProviders.map(({ label, field, placeholder }) => {
-              const state = keys[field];
-              return (
-                <div key={field}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: 6,
-                    }}
-                  >
-                    <span className="overline">{label}</span>
-                    {/* Saved indicator dot */}
-                    <span
-                      title={state.saved ? "Saved" : "Unsaved"}
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: state.saved ? "var(--green)" : "var(--border)",
-                        display: "inline-block",
-                        transition: "background 0.3s",
-                      }}
-                    />
-                  </div>
-                  <input
-                    type="password"
-                    className="finput"
-                    placeholder={placeholder}
-                    value={state.value}
-                    onChange={(e) => handleKeyChange(field, e.target.value)}
-                    autoComplete="off"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Section B — Models */}
-        <div className="card" style={{ padding: "20px 24px" }}>
-          <h2 className="heading-3" style={{ marginBottom: 16 }}>
-            Model Names
-          </h2>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {modelFields.map(({ label, field, placeholder }) => (
-              <div key={field}>
-                <div style={{ marginBottom: 6 }}>
-                  <span className="caption" style={{ color: "var(--fg)", fontWeight: 500 }}>
-                    {label}
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  className="finput"
-                  placeholder={placeholder}
-                  value={models[field]}
-                  onChange={(e) => handleModelChange(field, e.target.value)}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Section C — Vision Priority (full width) */}
-        <div className="card" style={{ padding: "20px 24px", gridColumn: "1 / -1" }}>
-          <h2 className="heading-3" style={{ marginBottom: 6 }}>
-            Vision Priority
-          </h2>
-          <p className="caption" style={{ marginBottom: 16 }}>
-            Drag to reorder which provider is tried first for vision tasks.
+      <div className="page-head">
+        <div>
+          <h1 className="display-l">Models &amp; API Keys</h1>
+          <p>
+            Connect your AI providers, pin the model for each pipeline task, and set the
+            fallback order Pixpilot uses when a provider fails or is rate-limited.
           </p>
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+        </div>
+        <div style={{ display: "flex", gap: "var(--space-3)" }}>
+          <button
+            className="btn btn-ghost"
+            onClick={handleDiscard}
+            disabled={!hasDirty || saveStatus === "saving"}
           >
-            <SortableContext
-              items={visionOrder}
-              strategy={verticalListSortingStrategy}
-            >
-              {visionOrder.map((id, index) => (
-                <SortableItem
-                  key={id}
-                  id={id}
-                  index={index}
-                  label={PROVIDER_DISPLAY[id]}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+            Discard
+          </button>
+          <button
+            className="btn btn-cta"
+            onClick={handleSave}
+            disabled={saveStatus === "saving"}
+          >
+            {saveStatus === "saving" ? (
+              <>
+                <span className="btn-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                {saveStatus === "saved" ? "Saved!" : "Save changes"}
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Save button */}
-      <div style={{ marginTop: 24 }}>
-        <button
-          className="btn btn-default"
-          onClick={handleSave}
-          disabled={saveStatus === "saving"}
-          style={{ width: "100%" }}
-        >
-          {saveStatus === "saving" ? "Saving…" : "Save Settings"}
-        </button>
+      {saveStatus === "error" && (
+        <p className="caption" style={{ color: "var(--destructive)" }}>
+          Save failed — please check your connection and try again.
+        </p>
+      )}
 
-        {saveStatus === "saved" && (
-          <p className="caption" style={{ marginTop: 8, color: "var(--green)", textAlign: "center" }}>
-            Settings saved.
-          </p>
-        )}
-        {saveStatus === "error" && (
-          <p className="caption" style={{ marginTop: 8, color: "var(--destructive)", textAlign: "center" }}>
-            Failed to save settings. Please try again.
-          </p>
-        )}
-      </div>
+      {/* API keys */}
+      <section>
+        <SectionHead
+          overline="API keys"
+          heading="Connected providers"
+          hint="Add a key to activate a provider."
+        />
+        <div className="prov-grid">
+          {ALL_PROVIDERS.map((p) => (
+            <ProviderCard
+              key={p.id}
+              providerId={p.id}
+              name={p.name}
+              role={p.role}
+              initials={p.initials}
+              badgeBg={p.bg}
+              badgeColor={p.color}
+              keyValue={keys[p.keyField]?.value ?? ""}
+              onKeyChange={(v) => handleKeyChange(p.keyField, v)}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Vision Analysis */}
+      <section>
+        <SectionHead
+          overline="Vision analysis"
+          heading="Product vision model"
+          hint="Analyzes product image, reference, 3D renders, and video frames into a structured profile."
+        />
+        <TaskModelTable
+          providers={VISION_PROVIDERS}
+          order={visionOrder}
+          models={models}
+          onOrderChange={setVisionOrder}
+          onModelChange={handleModelChange}
+        />
+      </section>
+
+      {/* Summary */}
+      <section>
+        <SectionHead
+          overline="Summarizer"
+          heading="Summary model"
+          hint="Merges the vision profile with user descriptions into the Input Summary Card."
+        />
+        <TaskModelTable
+          providers={SUMMARY_PROVIDERS}
+          order={summaryOrder}
+          models={models}
+          onOrderChange={setSummaryOrder}
+          onModelChange={handleModelChange}
+        />
+      </section>
+
+      {/* Image Prompt */}
+      <section>
+        <SectionHead
+          overline="Image prompt"
+          heading="Prompt refinement model"
+          hint="Translates natural language feedback into revised FLUX generation prompts."
+        />
+        <TaskModelTable
+          providers={PROMPT_PROVIDERS}
+          order={promptOrder}
+          models={models}
+          onOrderChange={setPromptOrder}
+          onModelChange={handleModelChange}
+        />
+      </section>
+
+      {/* Image Generation */}
+      <section>
+        <SectionHead
+          overline="Image generation"
+          heading="Generation model"
+          hint="Pin the model for each provider and drag to set which one Pixpilot tries first."
+        />
+        <TaskModelTable
+          providers={IMAGE_GEN_PROVIDERS}
+          order={imageGenOrder}
+          models={models}
+          onOrderChange={setImageGenOrder}
+          onModelChange={handleModelChange}
+        />
+      </section>
     </div>
   );
 }
