@@ -5,14 +5,18 @@ import { useSSE } from "@/lib/sse";
 import { StageTracker, type Stage } from "./StageTracker";
 import { type RunMeta } from "./NewGenerationModal";
 import { CheckIcon, XIcon } from "./icons";
+import { ImageWorkspace } from "./ImageWorkspace";
 
 const PIPELINE_STAGES: { key: string; name: string; label: string }[] = [
-  { key: "process_text",      name: "Text",     label: "1" },
-  { key: "process_image",     name: "Image",    label: "2" },
-  { key: "process_video",     name: "Media",    label: "3" },
-  { key: "process_model",     name: "3D Model", label: "4" },
-  { key: "finalize",          name: "Finalize", label: "5" },
-  { key: "pipeline_complete", name: "Done",     label: "6" },
+  { key: "text_processed",            name: "Text",       label: "1" },
+  { key: "image_processed",           name: "Image",      label: "2" },
+  { key: "video_processed",           name: "Media",      label: "3" },
+  { key: "model_processed",           name: "3D Model",   label: "4" },
+  { key: "ingestion_complete",        name: "Ingestion",  label: "5" },
+  { key: "vision_analyzed",           name: "Vision",     label: "6" },
+  { key: "summary_complete",          name: "Summary",    label: "7" },
+  { key: "image_generation_started",  name: "Generating", label: "8" },
+  { key: "image_generation_complete", name: "Done",       label: "9" },
 ];
 
 const MODE_LABELS: Record<string, string> = {
@@ -44,8 +48,16 @@ export function RunView({ run, onDismiss }: { run: RunMeta; onDismiss: () => voi
   const stages = deriveStages(seenEvents);
 
   const isComplete = seenEvents.has("pipeline_complete");
-  const hasError   = seenEvents.has("pipeline_error");
+  const hasError   = seenEvents.has("pipeline_error") || seenEvents.has("image_generation_failed");
   const isTerminal = isComplete || hasError || seenEvents.has("stream_end");
+
+  const imageCompleteMsg = messages.find((m) => m.event === "image_generation_complete");
+  const imageData = imageCompleteMsg?.data as {
+    image_url: string;
+    iteration: number;
+    prompt_used: string;
+    seed: number | null;
+  } | undefined;
 
   useEffect(() => {
     if (logRef.current) {
@@ -72,10 +84,15 @@ export function RunView({ run, onDismiss }: { run: RunMeta; onDismiss: () => voi
       <div className="card run-stage-card">
         <div className="run-stage-head">
           {isComplete && (
-            <span className="badge badge-success"><span className="pulse" /><CheckIcon style={{ width: 12, height: 12 }} /> Complete</span>
+            <span className="badge badge-success">
+              <span className="pulse" />
+              <CheckIcon style={{ width: 12, height: 12 }} /> Complete
+            </span>
           )}
           {hasError && (
-            <span className="badge badge-error"><XIcon style={{ width: 12, height: 12 }} /> Failed</span>
+            <span className="badge badge-error">
+              <XIcon style={{ width: 12, height: 12 }} /> Failed
+            </span>
           )}
           {!isTerminal && (
             <span className="badge badge-amber"><span className="pulse" /> Running</span>
@@ -85,7 +102,6 @@ export function RunView({ run, onDismiss }: { run: RunMeta; onDismiss: () => voi
       </div>
 
       <div className="run-body">
-        {/* Left: inputs panel */}
         <div className="run-inputs card">
           <div className="run-inputs-head">Inputs</div>
           {run.imagePreviewUrl ? (
@@ -115,7 +131,6 @@ export function RunView({ run, onDismiss }: { run: RunMeta; onDismiss: () => voi
           </div>
         </div>
 
-        {/* Right: live SSE log */}
         <div className="run-log card">
           <div className="run-log-head">Live Events</div>
           <div className="run-log-body" ref={logRef}>
@@ -184,8 +199,36 @@ export function RunView({ run, onDismiss }: { run: RunMeta; onDismiss: () => voi
                   </div>
                 );
               }
+
+              if (msg.event === "image_generation_complete" && imageData) {
+                return (
+                  <div key={i} className="log-item log-ok">
+                    <span className="log-event">image_generation_complete</span>
+                    <span className="log-data">
+                      iteration: {imageData.iteration} · seed: {imageData.seed ?? "—"}
+                    </span>
+                    <ImageWorkspace
+                      runId={run.runId}
+                      initialImageUrl={imageData.image_url}
+                      initialIteration={imageData.iteration}
+                      initialPrompt={imageData.prompt_used}
+                      initialSeed={imageData.seed}
+                    />
+                  </div>
+                );
+              }
+
               return (
-                <div key={i} className={`log-item ${msg.event.includes("error") || msg.event.includes("failed") ? "log-error" : msg.event === "pipeline_complete" ? "log-ok" : ""}`}>
+                <div
+                  key={i}
+                  className={`log-item ${
+                    msg.event.includes("error") || msg.event.includes("failed")
+                      ? "log-error"
+                      : msg.event === "pipeline_complete"
+                      ? "log-ok"
+                      : ""
+                  }`}
+                >
                   <span className="log-event">{msg.event}</span>
                   {Object.keys(msg.data).length > 0 && (
                     <span className="log-data">
